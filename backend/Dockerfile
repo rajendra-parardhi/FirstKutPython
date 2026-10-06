@@ -19,8 +19,10 @@
 #     Chroma's SQLite store cannot take concurrent writers.
 ###############################################################################
 
-# PyTorch 2.4.1 + CUDA 12.4 + cuDNN 9, Python 3.11 (~3.2GB compressed)
-FROM pytorch/pytorch:2.4.1-cuda12.4-cudnn9-runtime
+# PyTorch 2.6.0 + CUDA 12.4 + cuDNN 9, Python 3.11 (~3.2GB compressed).
+# Must stay >= 2.5: transformers 5.x (required by sentence-transformers 6.x and
+# the Nemotron-3-Embed model) disables torch entirely when it finds torch < 2.5.
+FROM pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -56,7 +58,7 @@ WORKDIR /app/backend
 # Image-only constraints (kept out of requirements.txt so local dev stays free
 # to use newer versions):
 #   * torch/torchvision filtered out - the base image provides CUDA builds.
-#   * numpy<2 - known-good with torch 2.4.1 / faiss / easyocr.
+#   * numpy<2 - known-good with torch 2.6.0 / faiss / easyocr.
 #   * opencv<4.12 - opencv 4.12+ hard-requires numpy>=2, so it must match.
 COPY requirements.txt .
 RUN grep -vE '^(torch|torchvision)([[:space:]]|$)' requirements.txt \
