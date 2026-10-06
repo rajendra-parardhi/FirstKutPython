@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login UI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #3187E9;
+            --background-grey: #F0F2F5;
+            --card-background: #FFFFFF;
+            --input-background: #F5F5F5;
+            --placeholder-color: #888888;
+            --text-color: #333333;
+            --border-radius-card: 20px;
+            --border-radius-elements: 12px;
+            --padding-card: 30px;
+            --spacing-elements: 20px;
+            --shadow-subtle: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--background-grey);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-color);
+            box-sizing: border-box;
+        }
+
+        .login-card {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius-card);
+            box-shadow: var(--shadow-subtle);
+            padding: var(--padding-card);
+            width: 100%;
+            max-width: 380px; /* Max width for the card */
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-elements); /* Consistent spacing between elements */
+        }
+
+        .header-avatar-container {
+            background-color: var(--primary-blue);
+            border-radius: var(--border-radius-elements);
+            height: 150px; /* Height of the blue box */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: calc(var(--spacing-elements) * 0.5); /* Adjust spacing to match image */
+        }
+
+        .header-avatar-container .material-icons {
+            color: var(--card-background);
+            font-size: 90px; /* Size of the user icon */
+        }
+
+        .input-field-container {
+            background-color: var(--input-background);
+            border-radius: var(--border-radius-elements);
+            display: flex;
+            align-items: center;
+            padding: 0 10px; /* Padding inside the input container */
+            margin-top: calc(var(--spacing-elements) * 0.5); /* Adjust spacing to match image */
+        }
+
+        .input-field-container input {
+            flex-grow: 1; /* Make input take available space */
+            border: none;
+            background: transparent;
+            padding: 15px 10px;
+            font-size: 16px;
+            color: var(--text-color);
+            outline: none;
+        }
+
+        .input-field-container input::placeholder {
+            color: var(--placeholder-color);
+        }
+
+        .input-field-container .material-icons {
+            color: var(--placeholder-color);
+            cursor: pointer;
+            padding: 0 5px;
+        }
+
+        .login-button {
+            background-color: var(--primary-blue);
+            color: var(--card-background);
+            border: none;
+            border-radius: var(--border-radius-elements);
+            padding: 15px 20px;
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            margin-top: calc(var(--spacing-elements) * 0.5); /* Adjust spacing to match image */
+            height: 55px; /* Fixed height for consistency */
+        }
+
+        .login-button:hover {
+            background-color: #2a7ae0; /* Slightly darker blue on hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="header-avatar-container">
+            <span class="material-icons">person</span>
+        </div>
+
+        <div class="input-field-container">
+            <input type="text" placeholder="Enter username">
+        </div>
+
+        <div class="input-field-container">
+            <input type="password" placeholder="Enter password">
+            <span class="material-icons">visibility</span>
+        </div>
+
+        <button class="login-button">Login</button>
+    </div>
+</body>
+</html>

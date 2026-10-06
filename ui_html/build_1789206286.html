@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unified Code Generation Studio</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #242228; /* Background color matching bounding box root */
+      color: #ECE6DD;
+    }
+    .code-font {
+      font-family: 'Fira Code', monospace;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+  <!-- ID 10: Parent Canvas Wrapping Main Dashboard Workspace Grid -->
+  <main class="w-full flex-grow p-4 lg:p-8 flex flex-col justify-between gap-6">
+
+    <!-- Top Navigation Header Container (ID 1) -->
+    <header class="w-full rounded-xl bg-[#201b22] border border-[#302833] p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <div class="h-4 w-4 rounded-full bg-[#ef7521] animate-pulse"></div>
+          <h1 class="text-xl md:text-2xl font-bold tracking-tight text-white">Unified Code Generation Studio</h1>
+          <span class="bg-[#ef7521]/15 text-[#ef7521] border border-[#ef7521] text-xs font-semibold px-2 py-0.5 rounded">Ask Gemini</span>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Image parsing structural layout generator & compiler pipeline</p>
+      </div>
+
+      <!-- Left-Right interactive quick options -->
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- ID 5 & 4 Tab Controls -->
+        <button class="bg-[#1c1b24] hover:bg-[#1c1b24]/80 text-white font-medium text-xs px-4 py-2.5 rounded-lg border border-gray-700/50 transition">
+          Upload Files
+        </button>
+        <button class="bg-[#171a25] hover:bg-[#171a25]/80 text-white font-medium text-xs px-4 py-2.5 rounded-lg border border-[#171a25] transition">
+          Figma Compiler Workspace
+        </button>
+        <!-- ID 3: Status Marker -->
+        <div class="flex items-center gap-2 bg-[#191e28] text-emerald-400 text-xs px-3.5 py-2 rounded-lg border border-emerald-500/20 code-font">
+          <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+          API: localhost:8000
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Workspace Content: Left Config Sidebar & Right Big Output Workspace -->
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+      
+      <!-- Left Column Sidebar Controls (approx 25-30% on desktop) -->
+      <aside class="xl:col-span-4 flex flex-col gap-5 justify-between">
+        
+        <!-- ID 9: Click to Upload UI Screenshot dropzone container -->
+        <div class="flex-grow bg-[#14151c] hover:bg-[#14151c]/90 border-2 border-dashed border-[#2C2E3E] rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition">
+          <div class="h-12 w-12 bg-[#ef7521]/10 rounded-full flex items-center justify-center mb-4">
+            <svg class="h-6 w-6 text-[#ef7521]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          </div>
+          <span class="text-sm font-semibold text-white">Click to Upload UI Screenshot</span>
+          <span class="text-xs text-gray-500 mt-1">Drag and drop or select local PNG/JPG file</span>
+        </div>
+
+        <!-- ID 12: Input Image Status Bar Tracker -->
+        <div class="bg-[#474d62]/25 text-xs text-[#ece6dd] font-medium px-4 py-2.5 rounded-lg border border-white/5 flex items-center gap-2">
+          <svg class="h-4 w-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Uploaded Input Image active
+        </div>
+
+        <!-- ID 11 & 7: RuleBased Image Parsing & Mockup settings -->
+        <div class="bg-[#ece6dd] text-[#242228] p-5 rounded-xl shadow-lg flex flex-col gap-3">
+          <div class="flex justify-between items-center border-b border-[#242228]/10 pb-2">
+            <span class="text-xs font-bold tracking-wider uppercase">Pipeline Parsing Config</span>
+            <!-- ID 7 project marker notification -->
+            <span class="bg-[#c3616d] h-2.5 w-2.5 rounded-full inline-block animate-ping"></span>
+          </div>
+          
+          <div class="space-y-2 text-xs">
+            <div class="flex justify-between font-medium">
+              <span>RuleBased Processing</span>
+              <span class="font-bold text-emerald-800">Enabled</span>
+            </div>
+            <div class="flex justify-between font-medium">
+              <span>LLM Synthesis</span>
+              <span class="font-bold text-emerald-800">Gemini 1.5 Pro</span>
+            </div>
+            <div class="flex justify-between font-medium">
+              <span>Memory Retrieval</span>
+              <span class="font-bold text-indigo-900">Vector Search (RAG)</span>
+            </div>
+            <div class="flex justify-between font-medium">
+              <span>Element Profile Map</span>
+              <span class="font-bold text-purple-900">OCR & Color Extraction</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ID 2: Run Code Engine Pipeline Orange Action Button -->
+        <button class="bg-[#ef7521] hover:bg-[#ef7521]/95 text-white font-semibold text-sm px-6 py-3.5 rounded-lg shadow-lg hover:shadow-[#ef7521]/20 transition flex items-center justify-center gap-2">
+          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+          Run Code Engine Pipeline
+        </button>
+
+        <!-- ID 6: System logs container console view -->
+        <div class="bg-[#1b2b39] border border-[#2a3d50] rounded-xl p-4 flex flex-col gap-3 h-48">
+          <div class="flex items-center gap-1.5 border-b border-[#2a3d50] pb-2 text-[10px] tracking-wider text-slate-400 font-bold uppercase code-font">
+            <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+            <span class="w-2 h-2 rounded-full bg-yellow-500 inline-block"></span>
+            <span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+            <span class="ml-2">System Live Logs</span>
+          </div>
+          <div class="overflow-y-auto space-y-1.5 code-font text-[11px] text-slate-300">
+            <div class="flex justify-between"><span class="text-indigo-400">[02:30:11] Segmenting</span><span>0.533s</span></div>
+            <div class="flex justify-between"><span class="text-amber-400">[02:30:12] OCR Extraction</span><span>0.804s</span></div>
+            <div class="flex justify-between"><span class="text-teal-400">[02:30:13] Color Mapping</span><span>0.003s</span></div>
+            <div class="flex justify-between"><span class="text-blue-400">[02:30:13] Memory Query</span><span>0.376s</span></div>
+            <div class="flex justify-between"><span class="text-emerald-400">[02:30:14] UI Synthesizer</span><span>0.003s</span></div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- ID 8: Right Side Main Layout Canvas Output Frame Viewport (approx 70-75% width) -->
+      <section class="xl:col-span-8 bg-[#0f111a] border border-[#1f2233] rounded-2xl flex flex-col overflow-hidden shadow-2xl min-h-[500px]">
+        
+        <!-- Interactive Code Editor Window Header Tab Area -->
+        <div class="bg-[#151825] border-b border-[#1f2233] px-4 py-2.5 flex justify-between items-center">
+          <div class="flex items-center gap-2 text-xs">
+            <div class="bg-[#0f111a] text-emerald-400 border-t-2 border-[#ef7521] px-4 py-1.5 rounded-t font-semibold cursor-pointer">
+              semantic_layout.html
+            </div>
+            <div class="text-gray-500 hover:text-gray-300 px-3 py-1.5 rounded cursor-pointer transition">
+              structural_layout.css
+            </div>
+            <div class="text-gray-500 hover:text-gray-300 px-3 py-1.5 rounded cursor-pointer transition">
+              flutter_widget.dart
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button class="text-xs text-gray-500 hover:text-gray-300 p-1.5 bg-gray-800/40 hover:bg-gray-800 rounded transition">
+              Copy Output
+            </button>
+          </div>
+        </div>
+
+        <!-- Rendered Code Container Output Canvas area -->
+        <div class="p-6 flex-grow flex flex-col justify-between gap-4">
+          <div class="bg-[#05060A]/90 p-4 rounded-xl border border-white/5 flex-grow code-font text-xs text-slate-300 overflow-x-auto overflow-y-auto max-h-[420px]">
+            <p class="text-slate-500 italic mb-3">// Generated structural semantic view will render here live</p>
+            <span class="text-orange-400">&lt;!DOCTYPE html&gt;</span><br>
+            <span class="text-blue-400">&lt;html</span> <span class="text-purple-400">lang=</span><span class="text-emerald-400">"en"</span><span class="text-blue-400">&gt;</span><br>
+            <span class="text-blue-400">&lt;head&gt;</span><br>
+            &nbsp;&nbsp;<span class="text-blue-400">&lt;title&gt;</span>UI Generator Blueprint Output Preview<span class="text-blue-400">&lt;/title&gt;</span><br>
+            <span class="text-blue-400">&lt;/head&gt;</span><br>
+            <span class="text-blue-400">&lt;body&gt;</span><br>
+            &nbsp;&nbsp;<span class="text-blue-400">&lt;div</span> <span class="text-purple-400">class=</span><span class="text-emerald-400">"container-grid"</span><span class="text-blue-400">&gt;</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-500">&lt;!-- Pipeline renders matching coordinates --&gt;</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-blue-400">&lt;div</span> <span class="text-purple-400">id=</span><span class="text-emerald-400">"nav_node_1"</span> <span class="text-purple-400">class=</span><span class="text-emerald-400">"bg-dark-header"</span><span class="text-blue-400">&gt;</span>...<span class="text-blue-400">&lt;/div&gt;</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-blue-400">&lt;div</span> <span class="text-purple-400">id=</span><span class="text-emerald-400">"dropzone_9"</span><span class="text-blue-400">&gt;</span>...<span class="text-blue-400">&lt;/div&gt;</span><br>
+            &nbsp;&nbsp;<span class="text-blue-400">&lt;/div&gt;</span><br>
+            <span class="text-blue-400">&lt;/body&gt;</span><br>
+            <span class="text-blue-400">&lt;/html&gt;</span>
+          </div>
+
+          <div class="flex justify-between items-center text-xs text-slate-500">
+            <span>Layout aspect-ratio: 1.774 &bull; 13 total UI bounding-boxes computed</span>
+            <span class="text-emerald-500 font-semibold flex items-center gap-1">
+              <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span> Ready
+            </span>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- ID 0: White-backed Page Footer container or Secondary Container -->
+  <footer class="w-full bg-[#ECE6DD] text-[#242228] p-6 text-center text-xs border-t border-gray-300">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
+      <span>Powered by <strong>Unified Code Generation Studio</strong> &bull; SAM OCR Visual Blueprint v2.1</span>
+      <span class="text-slate-600 font-medium">&copy; 2026 Code Engine Pipeline Workspace system</span>
+    </div>
+  </footer>
+
+</body>
+</html>

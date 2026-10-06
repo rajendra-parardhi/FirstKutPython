@@ -1,0 +1,110 @@
+{
+  "elements": [
+    {
+      "text": [
+        "12.30",
+        "Slot Booking",
+        "Full Name",
+        "Enter your name",
+        "Email",
+        "Enter email address",
+        "Mobile Number",
+        "Enter you number",
+        "Location",
+        "Select location",
+        "Slot",
+        "Select slot",
+        "Message",
+        "Write a message",
+        "Send"
+      ],
+      "color": "#211b22",
+      "bbox": [
+        0,
+        0,
+        588,
+        1599
+      ]
+    },
+    {
+      "text": [],
+      "color": "#1e1f27",
+      "bbox": [
+        22,
+        184,
+        545,
+        967
+      ]
+    },
+    {
+      "text": [],
+      "color": "#22222b",
+      "bbox": [
+        45,
+        1003,
+        500,
+        121
+      ]
+    },
+    {
+      "text": [],
+      "color": "#ea5f57",
+      "bbox": [
+        23,
+        1495,
+        544,
+        75
+      ]
+    },
+    {
+      "text": [],
+      "color": "#23232a",
+      "bbox": [
+        45,
+        848,
+        500,
+        81
+      ]
+    },
+    {
+      "text": [],
+      "color": "#23232a",
+      "bbox": [
+        45,
+        699,
+        499,
+        75
+      ]
+    },
+    {
+      "text": [],
+      "color": "#292b34",
+      "bbox": [
+        45,
+        256,
+        499,
+        75
+      ]
+    },
+    {
+      "text": [],
+      "color": "#292b35",
+      "bbox": [
+        46,
+        404,
+        498,
+        74
+      ]
+    },
+    {
+      "text": [],
+      "color": "#26272f",
+      "bbox": [
+        45,
+        551,
+        499,
+        74
+      ]
+    }
+  ]
+}

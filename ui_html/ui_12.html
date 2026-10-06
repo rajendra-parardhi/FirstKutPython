@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaddleOCR Demo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #dedbeb; /* Background color from JSON */
+            font-family: 'Roboto', sans-serif; /* Modern sans-serif font */
+            color: #3A3A3E; /* Text color sampled from image */
+            text-align: center;
+            line-height: 1.2;
+            overflow: hidden; /* Prevent scroll if content slightly overflows */
+        }
+
+        .content-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px; /* Spacing between the two lines */
+        }
+
+        .text-line {
+            font-size: 80px; /* Large font size to match the screenshot */
+            font-weight: 600; /* Semi-bold */
+            margin: 0; /* Remove default paragraph margins */
+        }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 768px) {
+            .text-line {
+                font-size: 60px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .text-line {
+                font-size: 40px;
+            }
+            .content-container {
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="content-container">
+        <p class="text-line">Hello World</p>
+        <p class="text-line">from PaddleOCR!</p>
+    </div>
+</body>
+</html>

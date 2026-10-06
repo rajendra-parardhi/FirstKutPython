@@ -1,0 +1,177 @@
+{
+  "elements": [
+    {
+      "text": [
+        "Image Parsing",
+        "& Ul Extraction",
+        "\"type",
+        "\"Container\" ,",
+        "\"layout\"",
+        "\"orientation\"-",
+        "\"verttical\" ,",
+        "\"alignment\":",
+        "\"center\" _",
+        "\"padding\"",
+        "16",
+        "} children\":",
+        "Enter username",
+        "CV Model",
+        "\"Id\"",
+        "\"logo_img\" ,",
+        "\"type\" =",
+        "Image\" ,",
+        "Enter password",
+        "\"layout\"",
+        "\"width\" =",
+        "120,",
+        "\"height\"",
+        "120} ,",
+        "Login",
+        "\"style\" =",
+        "borderRadius\": 60,",
+        "\"metadata\"",
+        "Mockup Image",
+        "\"source\"-",
+        "'mockup_refllogopng\"",
+        "Output"
+      ],
+      "color": "#eef1f6",
+      "bbox": [
+        0,
+        5,
+        1535,
+        1014
+      ]
+    },
+    {
+      "text": [],
+      "color": "#f3f3f3",
+      "bbox": [
+        596,
+        279,
+        856,
+        723
+      ]
+    },
+    {
+      "text": [],
+      "color": "#f0f0f1",
+      "bbox": [
+        1007,
+        279,
+        445,
+        724
+      ]
+    },
+    {
+      "text": [],
+      "color": "#b4d0f2",
+      "bbox": [
+        106,
+        286,
+        363,
+        586
+      ]
+    },
+    {
+      "text": [],
+      "color": "#3186ec",
+      "bbox": [
+        133,
+        313,
+        309,
+        156
+      ]
+    },
+    {
+      "text": [],
+      "color": "#ebeaeb",
+      "bbox": [
+        591,
+        446,
+        293,
+        158
+      ]
+    },
+    {
+      "text": [],
+      "color": "#2780ec",
+      "bbox": [
+        133,
+        670,
+        309,
+        66
+      ]
+    },
+    {
+      "text": [],
+      "color": "#f0f0f1",
+      "bbox": [
+        133,
+        509,
+        309,
+        58
+      ]
+    },
+    {
+      "text": [],
+      "color": "#98c1f3",
+      "bbox": [
+        243,
+        347,
+        90,
+        78
+      ]
+    },
+    {
+      "text": [],
+      "color": "#b8b8b8",
+      "bbox": [
+        1168,
+        965,
+        126,
+        37
+      ]
+    },
+    {
+      "text": [],
+      "color": "#b8b8b8",
+      "bbox": [
+        1066,
+        465,
+        92,
+        20
+      ]
+    },
+    {
+      "text": [],
+      "color": "#cacaca",
+      "bbox": [
+        1186,
+        536,
+        65,
+        23
+      ]
+    },
+    {
+      "text": [],
+      "color": "#898889",
+      "bbox": [
+        573,
+        266,
+        26,
+        36
+      ]
+    },
+    {
+      "text": [],
+      "color": "#cacaca",
+      "bbox": [
+        1057,
+        536,
+        44,
+        19
+      ]
+    }
+  ]
+}

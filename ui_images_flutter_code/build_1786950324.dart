@@ -1,0 +1,1 @@
+/* Code synthesis failed: Missing or invalid Gemini API Key. Please configure GEMINI_API_KEY inside your .env file starting with 'AIzaSy'. */

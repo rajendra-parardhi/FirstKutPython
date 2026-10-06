@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gauge UI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #000000; /* Black background as per image */
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden; /* Prevent scroll if elements exceed viewport */
+        }
+
+        .gauge-container {
+            position: relative;
+            width: 400px; /* Base width for the gauge */
+            height: 271px; /* Base height for the gauge container from JSON */
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* Align gauge to the bottom */
+            /* subtle shadow as per guidelines */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); 
+            border-radius: 10px; /* Soften container edges */
+        }
+
+        .gauge-svg {
+            position: absolute;
+            bottom: 0; /* Align the bottom of the SVG to the bottom of the container */
+            width: 400px;
+            height: 200px; /* Height of the semi-circle part */
+            /* The viewBox defines a coordinate system (0 0 400 200) */
+            /* Center of arc's full circle at (200, 200), radius 180, stroke-width 40 */
+        }
+
+        /* Common style for paths */
+        .gauge-svg path {
+            fill: none;
+            stroke-width: 40;
+            stroke-linecap: round;
+        }
+
+        /* Colors for segments based on visual analysis */
+        .gauge-segment-green { stroke: #4CAF50; } /* Material Green 500 */
+        .gauge-segment-golden { stroke: #FFC107; } /* Material Amber 500 */
+        .gauge-segment-red { stroke: #F44336; }   /* Material Red 500 */
+        .gauge-track { stroke: #333333; }         /* Dark gray for background track */
+        .gauge-indicator { stroke: #FFFFFF; }     /* White for indicator */
+
+        .gauge-svg text {
+            fill: #FFFFFF;
+            font-size: 20px;
+            font-weight: 400;
+        }
+
+        .center-value {
+            position: absolute;
+            top: 50%; /* Adjust based on visual centering */
+            left: 50%;
+            transform: translate(-50%, -10%); /* Fine-tune vertical position */
+            color: #FFFFFF;
+            font-size: 80px;
+            font-weight: 700;
+            line-height: 1; /* Adjust line height for better vertical alignment */
+        }
+    </style>
+</head>
+<body>
+    <div class="gauge-container">
+        <svg class="gauge-svg" viewBox="0 0 400 200">
+            <!-- Helper function for polar to Cartesian conversion for SVG -->
+            <script type="text/javascript">
+                function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+                    const angleInRadians = angleInDegrees * Math.PI / 180.0;
+                    return {
+                        x: centerX + (radius * Math.cos(angleInRadians)),
+                        y: centerY - (radius * Math.sin(angleInRadians)) // Y-axis inverted for SVG drawing (upwards)
+                    };
+                }
+
+                const svg_cx = 200;
+                const svg_cy = 200;
+                const svg_radius = 180;
+                const svg_strokeWidth = 40;
+
+                function describeArc(startAngle, endAngle) {
+                    const start = polarToCartesian(svg_cx, svg_cy, svg_radius, startAngle);
+                    const end = polarToCartesian(svg_cx, svg_cy, svg_radius, endAngle);
+
+                    const largeArcFlag = Math.abs(endAngle - startAngle) > 180 ? 1 : 0;
+                    // For clockwise sweep from 180 to 0 degrees, sweep-flag=0
+                    const pathData = [
+                        "M", start.x, start.y,
+                        "A", svg_radius, svg_radius, 0, largeArcFlag, 0, end.x, end.y
+                    ].join(" ");
+
+                    return pathData;
+                }
+
+                // Angles mapping: 0 value = 180 deg, 300 value = 0 deg
+                const angle_0 = 180;
+                const angle_100 = 180 - (100 * 0.6); // 120 deg
+                const angle_200 = 180 - (200 * 0.6); // 60 deg
+                const angle_300 = 180 - (300 * 0.6); // 0 deg
+
+                // Indicator for 71
+                const indicator_value_angle = 180 - (71 * 0.6); // 137.4 degrees
+                // Small arc around indicator_value_angle
+                const indicator_start_angle = indicator_value_angle + 3; // 3 degrees sweep for visibility
+                const indicator_end_angle = indicator_value_angle - 3;
+            </script>
+
+            <!-- Background track for the entire semi-circle -->
+            <path d="M 20 200 A 180 180 0 0 0 380 200" class="gauge-track"/>
+            
+            <!-- Green Segment (0-100) -->
+            <path d="M 20 200 A 180 180 0 0 0 110 44.12" class="gauge-segment-green"/>
+            
+            <!-- Golden Segment (100-200) -->
+            <path d="M 110 44.12 A 180 180 0 0 0 290 44.12" class="gauge-segment-golden"/>
+            
+            <!-- Red Segment (200-300) -->
+            <path d="M 290 44.12 A 180 180 0 0 0 380 200" class="gauge-segment-red"/>
+            
+            <!-- Indicator for 71 -->
+            <path d="M 60.3 84.5 A 180 180 0 0 0 73.2 72.7" class="gauge-indicator"/>
+
+            <!-- Labels -->
+            <!-- Label positions calculated for radius = 180 + 40/2 + 5 = 205 -->
+            <!-- 0 (180deg): x=200-205=-5, y=200 -->
+            <!-- 100 (120deg): x=97.5, y=22.3 -->
+            <!-- 200 (60deg): x=302.5, y=22.3 -->
+            <!-- 300 (0deg): x=200+205=405, y=200 -->
+            <!-- Adjusting positioning slightly for aesthetic reasons and text-anchor -->
+            <text x="20" y="190" text-anchor="start">0</text>
+            <text x="97.5" y="42.3" text-anchor="middle">100</text>
+            <text x="302.5" y="42.3" text-anchor="middle">200</text>
+            <text x="380" y="190" text-anchor="end">300</text>
+        </svg>
+        <div class="center-value">71</div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,206 @@
+{
+  "elements": [
+    {
+      "text": [
+        "8 | 0",
+        "Chat"
+      ],
+      "color": "#000000",
+      "bbox": [
+        432,
+        0,
+        1487,
+        57
+      ]
+    },
+    {
+      "text": [
+        "200",
+        "100",
+        "300",
+        "105"
+      ],
+      "color": "#3d302c",
+      "bbox": [
+        561,
+        731,
+        395,
+        208
+      ]
+    },
+    {
+      "text": [
+        "DAAn"
+      ],
+      "color": "#181c22",
+      "bbox": [
+        479,
+        938,
+        557,
+        78
+      ]
+    },
+    {
+      "text": [
+        "AirAware Al",
+        "Smart Dashbc",
+        "localhost 8501"
+      ],
+      "color": "#3a3a3a",
+      "bbox": [
+        132,
+        0,
+        300,
+        58
+      ]
+    },
+    {
+      "text": [
+        "Select Date",
+        "2015/02/26",
+        "Live Pollutant Levels",
+        "PM2.5 (Fine Particles)",
+        "78.07",
+        "Pmin (Duct)",
+        "28*\u20ac",
+        "Mostly cloudy"
+      ],
+      "color": "#15181e",
+      "bbox": [
+        31,
+        678,
+        323,
+        50
+      ]
+    },
+    {
+      "text": [
+        "Select City for Analytics",
+        "Ahmedabad"
+      ],
+      "color": "#16191e",
+      "bbox": [
+        31,
+        574,
+        323,
+        50
+      ]
+    },
+    {
+      "text": [
+        "Search"
+      ],
+      "color": "#4a4644",
+      "bbox": [
+        631,
+        1029,
+        275,
+        41
+      ]
+    },
+    {
+      "text": [],
+      "color": "#7f5d5a",
+      "bbox": [
+        41,
+        217,
+        72,
+        101
+      ]
+    },
+    {
+      "text": [
+        "Control Panel",
+        "Enable Admin Mode"
+      ],
+      "color": "#a1747a",
+      "bbox": [
+        71,
+        218,
+        42,
+        100
+      ]
+    },
+    {
+      "text": [],
+      "color": "#242424",
+      "bbox": [
+        69,
+        5,
+        57,
+        47
+      ]
+    },
+    {
+      "text": [
+        "AirAware: Smart Air Quality Analytics",
+        "Dashboard Status: Active | Target City: Ahmedabad",
+        "Live Prediction Visual"
+      ],
+      "color": "#909194",
+      "bbox": [
+        548,
+        303,
+        30,
+        37
+      ]
+    },
+    {
+      "text": [
+        "Deploy",
+        "Historical Trends: Ahmedabad",
+        "PM2.5 Levels over the last year"
+      ],
+      "color": "#b5b6b8",
+      "bbox": [
+        1191,
+        311,
+        26,
+        28
+      ]
+    },
+    {
+      "text": [
+        "200",
+        "150",
+        "3",
+        "100"
+      ],
+      "color": "#49578a",
+      "bbox": [
+        1032,
+        1034,
+        27,
+        31
+      ]
+    },
+    {
+      "text": [],
+      "color": "#b7b7b9",
+      "bbox": [
+        1038,
+        311,
+        25,
+        28
+      ]
+    },
+    {
+      "text": [
+        "U#",
+        "Wut",
+        "ENG",
+        "19.51",
+        "IN",
+        ") @",
+        "16-03-2026 @"
+      ],
+      "color": "#dadad9",
+      "bbox": [
+        1200,
+        1035,
+        22,
+        29
+      ]
+    }
+  ]
+}

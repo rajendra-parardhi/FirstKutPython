@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pollutant Impact Score</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #1e2321; /* Dark background color */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #ffffff;
+        }
+
+        .chart-container {
+            display: flex;
+            width: 900px; /* Fixed width for the chart container */
+            height: 500px; /* Fixed height */
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        /* Left Section: Pollutant Labels */
+        .chart-left {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            padding-top: 40px;
+            padding-right: 16px;
+        }
+
+        .chart-left .label-pollutant {
+            transform: rotate(-90deg);
+            white-space: nowrap;
+            margin-bottom: 20px; /* Adjust spacing */
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .chart-left .pollutant-name {
+            margin-bottom: 15px; /* Spacing between pollutant names */
+            font-size: 14px;
+            line-height: 1; /* Adjust line height to match bar spacing */
+        }
+        .chart-left .pollutant-name:first-of-type {
+            margin-top: -3px; /* Adjust alignment for the first label */
+        }
+        .chart-left .pollutant-name:last-of-type {
+            margin-bottom: 0;
+        }
+
+
+        /* Middle Section: Bar Chart */
+        .chart-middle {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding-top: 40px;
+            position: relative; /* For absolute positioning of x-axis labels if needed */
+        }
+
+        .chart-bar-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px; /* Spacing between bars */
+        }
+
+        .chart-bar {
+            height: 20px;
+            border-radius: 4px;
+            margin-right: auto; /* Push bars to the left */
+        }
+
+        /* X-axis */
+        .x-axis-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding-top: auto; /* Push to bottom */
+            margin-top: auto; /* Pushes to the bottom */
+            padding-bottom: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+        }
+
+        .x-axis-label-text {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+
+        /* Right Section: Color Legend */
+        .chart-right {
+            padding-left: 24px;
+            padding-top: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .chart-right .label-impact-score {
+            font-size: 14px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 10px;
+        }
+
+        .color-legend-wrapper {
+            position: relative;
+            height: 200px; /* Height of the legend bar */
+        }
+
+        .color-legend-bar {
+            width: 20px;
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(
+                to bottom,
+                #FFD700,    /* Yellow (for ~45/40) */
+                #66BB6A,    /* Green (for ~30) */
+                #00ACC1,    /* Cyan (for ~20) */
+                #3F51B5,    /* Indigo (for ~10) */
+                #3F0052     /* Extremely Dark Purple (for ~0) */
+            );
+        }
+
+        .color-legend-values {
+            position: absolute;
+            top: -8px; /* Adjust to align with color bar */
+            left: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: calc(100% + 16px); /* Height of color bar + top/bottom offset */
+            font-size: 12px;
+            color: #ffffff;
+        }
+        .color-legend-values span {
+            line-height: 1; /* Ensure consistent spacing */
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <!-- Left Section: Pollutant Labels -->
+        <div class="chart-left">
+            <div class="label-pollutant">Pollutant</div>
+            <div class="pollutant-name">PM2.5</div>
+            <div class="pollutant-name">PM10</div>
+            <div class="pollutant-name">CO</div>
+            <div class="pollutant-name">NO2</div>
+            <div class="pollutant-name">SO2</div>
+            <div class="pollutant-name">O3</div>
+            <div class="pollutant-name">Benzene</div>
+            <div class="pollutant-name">Month</div>
+            <div class="pollutant-name">NH3</div>
+            <div class="pollutant-name">Xylene</div>
+        </div>
+
+        <!-- Middle Section: Bar Chart -->
+        <div class="chart-middle">
+            <div class="chart-bar-item">
+                <div class="chart-bar" style="width: calc(45 / 45 * 100%); background-color: #FFD700;"></div>
+            </div>
+            <div class="chart-bar-item">
+                <div class="chart-bar" style="width: calc(27 / 45 * 100%); background-color: #00BFA5;"></div>
+            </div>
+            <div class="chart-bar-item">
+                <div class="chart-bar" style="width: calc(15 / 45 * 100%); background-color: #305f86;"></div>
+            </div>
+            <div class="chart-bar-item">
+                <div class="chart-bar" style="width: calc(12 / 45 * 100%); background-color: #3a5089;"></div>
+            </div>
+            <div class="chart-bar-item">
+                <div class="chart-bar" style="width: calc(7 / 45 * 100%); background-color: #452f7b;"></div>
+            </div>
+            <div class="chart-bar-item">
+                <div class="chart-bar" style="width: calc(5 / 45 * 100%); background-color: #45206e;"></div>
+            </div>
+            <div class="chart-bar-item">
+                <div class="chart-bar" style="width: calc(3 / 45 * 100%); background-color: #451062;"></div>
+            </div>
+            <div class="chart-bar-item">
+                <div class="chart-bar" style="width: calc(1.5 / 45 * 100%); background-color: #44095a;"></div>
+            </div>
+            <div class="chart-bar-item">
+                <div class="chart-bar" style="width: calc(1.5 / 45 * 100%); background-color: #440959;"></div>
+            </div>
+            <div class="chart-bar-item">
+                <div class="chart-bar" style="width: calc(0.5 / 45 * 100%); background-color: #3F0052;"></div>
+            </div>
+
+            <div class="x-axis-labels">
+                <span>0</span>
+                <span>5</span>
+                <span>10</span>
+                <span>15</span>
+                <span>20</span>
+                <span>25</span>
+                <span>30</span>
+                <span>35</span>
+                <span>40</span>
+                <span>45</span>
+            </div>
+            <div class="x-axis-label-text">Impact Score</div>
+        </div>
+
+        <!-- Right Section: Color Legend -->
+        <div class="chart-right">
+            <div class="label-impact-score">Impact Score</div>
+            <div class="color-legend-wrapper">
+                <div class="color-legend-bar"></div>
+                <div class="color-legend-values">
+                    <span>40</span>
+                    <span>30</span>
+                    <span>20</span>
+                    <span>10</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

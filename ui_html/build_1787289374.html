@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ride Tracking Interface</title>
+  <style>
+    :root {
+      --bg-root: #ebecea;
+      --bg-container-1: #ebebea;
+      --bg-container-2: #ebebe6;
+      --bg-map: #e6e4da;
+      --bg-back-btn: #b0cfe8;
+      --bg-bottom-sheet: #f2f3f4;
+      --bg-call: #42d67c;
+      --bg-handle: #b8b9ba;
+      --bg-trip-details: #f2f6fb;
+      --bg-pickup-issue: #fdeceb;
+      --bg-warning-dot: #fbb8b4;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    /* Container holding the mobile screen preview */
+    .phone-mockup {
+      width: 360px;
+      height: 870px;
+      background-color: var(--bg-container-1);
+      border-radius: 40px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border: 8px solid #2d2d2d;
+    }
+
+    /* Side overlay background strip matching Container 2 */
+    .sidebar-overlay {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 70%; /* 175 / 250 = ~70% */
+      height: 100%;
+      background-color: var(--bg-container-2);
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Map representation matching Container 5 */
+    .map-container {
+      position: absolute;
+      left: 8.4%; /* 21 / 250 */
+      top: 0;
+      width: 58%; /* 145 / 250 */
+      height: 52.8%; /* 319 / 604 */
+      background-color: var(--bg-map);
+      border-bottom-left-radius: 20px;
+      border-bottom-right-radius: 20px;
+      z-index: 2;
+      overflow: hidden;
+    }
+
+    /* Decorative map elements */
+    .map-road {
+      position: absolute;
+      background: rgba(0,0,0,0.06);
+      border-radius: 4px;
+    }
+    .map-road.r1 { top: 30%; left: -10%; width: 120%; height: 8px; transform: rotate(15deg); }
+    .map-road.r2 { top: 60%; left: -10%; width: 120%; height: 12px; transform: rotate(-25deg); }
+    .map-road.r3 { top: 10%; left: 40%; width: 10px; height: 100%; }
+
+    .map-pin {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: #ff4d4d;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      top: 40%;
+      left: 55%;
+      box-shadow: -2px 2px 4px rgba(0,0,0,0.3);
+    }
+    .map-pin::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: white;
+      position: absolute;
+      border-radius: 50%;
+      top: 4px;
+      left: 4px;
+    }
+
+    /* Map floating back action matching Container 6 */
+    .back-action {
+      position: absolute;
+      left: 4.4%; /* 11 / 250 */
+      top: 18.3%; /* 111 / 604 */
+      width: 16.8%; /* 42 / 250 */
+      height: 4.6%; /* 28 / 604 */
+      background-color: var(--bg-back-btn);
+      border-radius: 10px;
+      z-index: 5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.2s;
+    }
+    .back-action:hover {
+      transform: scale(1.05);
+    }
+    .back-action::before {
+      content: '←';
+      color: white;
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    /* Main Information Bottom Sheet matching Text 0 */
+    .bottom-sheet {
+      position: absolute;
+      left: 0;
+      top: 53%; /* 320 / 604 */
+      width: 100%; /* 249 / 250 */
+      height: 47%; /* 284 / 604 */
+      background-color: var(--bg-bottom-sheet);
+      border-top-left-radius: 30px;
+      border-top-right-radius: 30px;
+      box-shadow: 0 -8px 24px rgba(0,0,0,0.08);
+      z-index: 3;
+      padding: 24px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sheet-handle {
+      position: absolute;
+      left: 14%; /* 35 / 250 */
+      top: 4%; /* 478 is offset relative to 320 -> ~24px from sheet top */
+      width: 9.6%; /* 24 / 250 */
+      height: 8px;
+      background-color: var(--bg-handle);
+      border-radius: 4px;
+      margin: 0 auto;
+    }
+
+    .otp-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-top: 15px;
+    }
+
+    .otp-title {
+      font-size: 13px;
+      color: #666;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .otp-code {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: #111;
+    }
+
+    .status-badge {
+      background-color: #fef3c7;
+      color: #d97706;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .divider {
+      height: 1px;
+      background-color: #e5e7eb;
+      margin: 16px 0;
+    }
+
+    .driver-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      background-color: #cbd5e1;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      color: #475569;
+    }
+
+    .driver-info {
+      flex: 1;
+    }
+
+    .driver-name {
+      font-weight: 700;
+      font-size: 16px;
+      color: #1e293b;
+    }
+
+    .vehicle-model {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    /* Floating call action button matching Container 8 */
+    .call-btn {
+      position: absolute;
+      left: 71.6%; /* 179 / 250 */
+      top: 37.4%; /* 426 Relative to base coordinate space */
+      width: 48px;
+      height: 48px;
+      background-color: var(--bg-call);
+      border-radius: 50%;
+      z-index: 4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(66, 214, 124, 0.4);
+      cursor: pointer;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+    .call-btn:hover {
+      transform: scale(1.1);
+      background-color: #36c36b;
+    }
+    .call-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: white;
+    }
+
+    /* Trip Details Action Panel matching Text 4 */
+    .trip-details-action {
+      position: absolute;
+      left: 4%; /* Normalized margins */
+      bottom: 72px; /* Positioned near bottom */
+      width: 92%;
+      height: 44px;
+      background-color: var(--bg-trip-details);
+      border: 1px solid rgba(59, 130, 246, 0.1);
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #2563eb;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      z-index: 4;
+    }
+    .trip-details-action:hover {
+      background-color: #e2eafc;
+    }
+
+    /* Issue with Pickup Action Panel matching Text 3 */
+    .pickup-issue-action {
+      position: absolute;
+      left: 4%;
+      bottom: 20px;
+      width: 92%;
+      height: 44px;
+      background-color: var(--bg-pickup-issue);
+      border: 1px solid rgba(239, 68, 68, 0.1);
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #dc2626;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      z-index: 4;
+    }
+    .pickup-issue-action:hover {
+      background-color: #fcdad7;
+    }
+
+    /* Tiny warning dot matching Container 10 */
+    .warning-dot {
+      width: 20px;
+      height: 8px;
+      background-color: var(--bg-warning-dot);
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    /* Pickup Details address element */
+    .pickup-address {
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.4;
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+    }
+    .pickup-address::before {
+      content: '●';
+      color: #10b981;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Phone Mockup Container representing Root Container 7 & 1 -->
+  <div class="phone-mockup">
+    
+    <!-- Sidebar Overlay corresponding to Container 2 -->
+    <div class="sidebar-overlay"></div>
+
+    <!-- Map container corresponding to Container 5 -->
+    <div class="map-container">
+      <div class="map-road r1"></div>
+      <div class="map-road r2"></div>
+      <div class="map-road r3"></div>
+      <div class="map-pin"></div>
+    </div>
+
+    <!-- Map back button corresponding to Container 6 -->
+    <div class="back-action" title="Back"></div>
+
+    <!-- Call action button overlay corresponding to Container 8 -->
+    <div class="call-btn" title="Call Driver">
+      <svg viewBox="0 0 24 24">
+        <path d="M6.62 10.79a15.15 15.15 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.11-.27c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.27 1.11z"/>
+      </svg>
+    </div>
+
+    <!-- Main bottom card corresponding to Text 0 & Container 9 -->
+    <div class="bottom-sheet">
+      <!-- Drag handle corresponding to Container 9 -->
+      <div class="sheet-handle"></div>
+      
+      <div class="otp-section">
+        <div>
+          <div class="otp-title">Share OTP with driver</div>
+          <div class="otp-code">9313</div>
+        </div>
+        <div class="status-badge">On the way</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="driver-section">
+        <div class="avatar">RK</div>
+        <div class="driver-info">
+          <div class="driver-name">Rajesh Kumar</div>
+          <div class="vehicle-model">Bajaj Auto</div>
+        </div>
+      </div>
+
+      <div class="pickup-address">
+        Pickup: Block 2 Main Road, Ramraju, Hyderabad, Telangana
+      </div>
+    </div>
+
+    <!-- Trip Details corresponding to Text 4 -->
+    <div class="trip-details-action">
+      Trip Details
+    </div>
+
+    <!-- Pickup Issue action corresponding to Text 3 & Container 10 -->
+    <div class="pickup-issue-action">
+      Issue with pickup
+      <div class="warning-dot" title="Warning Indicator"></div>
+    </div>
+
+  </div>
+
+</body>
+</html>

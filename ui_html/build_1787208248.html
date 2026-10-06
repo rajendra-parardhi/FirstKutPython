@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Rides App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #1e2022;
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Screen container reflecting design dimensions (278px x 612px) */
+    .app-screen {
+      position: relative;
+      width: 278px;
+      height: 612px;
+      background-color: #e8edef;
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
+      border: 6px solid #2d3135;
+    }
+
+    /* ID 0 Background Layer */
+    .bg-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 276px;
+      height: 608px;
+      background-color: #e8eeef;
+      z-index: 1;
+    }
+
+    /* Status Bar Mock */
+    .status-bar {
+      position: absolute;
+      top: 12px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #333;
+      z-index: 10;
+    }
+
+    .status-icons {
+      display: flex;
+      gap: 3px;
+    }
+
+    .status-icons span {
+      width: 12px;
+      height: 12px;
+      display: inline-block;
+      background-color: #333;
+      mask-size: contain;
+      mask-repeat: no-repeat;
+      -webkit-mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+    }
+
+    /* Main Typography Header (ID 2 Mapping) */
+    .content-header {
+      position: absolute;
+      left: 20px;
+      top: 45px;
+      z-index: 8;
+      pointer-events: none;
+    }
+
+    .content-header h1 {
+      font-size: 22px;
+      font-weight: 900;
+      line-height: 1.1;
+      color: #2c3a42;
+      margin-bottom: 30px;
+    }
+
+    /* Ride options styled beautifully according to labels */
+    .ride-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 210px;
+    }
+
+    .ride-option-card {
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+      backdrop-filter: blur(5px);
+      transition: transform 0.2s;
+      cursor: pointer;
+    }
+
+    .ride-option-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .option-indicator {
+      width: 4px;
+      height: 20px;
+      background-color: #92dbf2;
+      border-radius: 2px;
+    }
+
+    .option-details {
+      flex: 1;
+    }
+
+    .option-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: #2c3a42;
+      line-height: 1.2;
+    }
+
+    .option-subtitle {
+      font-size: 7px;
+      color: #727375;
+    }
+
+    /* Absolute Graphic Overlays based on DesignIR coordinates */
+    
+    /* ID 6: Accent Card on Right */
+    .accent-card-6 {
+      position: absolute;
+      left: 178px;
+      top: 127px;
+      width: 64px;
+      height: 126px;
+      background-color: #e1e1da;
+      border-radius: 14px;
+      border: 1.5px solid #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .accent-card-6::after {
+      content: '';
+      width: 16px;
+      height: 16px;
+      background-color: #727375;
+      clip-path: polygon(50% 0%, 0% 100%, 50% 70%, 100% 100%);
+      transform: rotate(45deg);
+    }
+
+    /* ID 1: Sky blue pill */
+    .accent-pill-1 {
+      position: absolute;
+      left: 44px;
+      top: 111px;
+      width: 56px;
+      height: 39px;
+      background-color: #92dbf2;
+      border-radius: 12px;
+      z-index: 3;
+      opacity: 0.85;
+    }
+
+    /* ID 5: Side Vertical Bar */
+    .accent-bar-5 {
+      position: absolute;
+      left: 259px;
+      top: 89px;
+      width: 15px;
+      height: 120px;
+      background-color: #85d7e9;
+      border-radius: 8px 0 0 8px;
+      z-index: 4;
+    }
+
+    /* ID 4: Green Pill */
+    .accent-pill-4 {
+      position: absolute;
+      left: 1px;
+      top: 203px;
+      width: 66px;
+      height: 52px;
+      background-color: #a8cb7b;
+      border-radius: 0 16px 16px 0;
+      z-index: 3;
+    }
+
+    /* ID 8: Light Blue Tag */
+    .accent-tag-8 {
+      position: absolute;
+      left: 182px;
+      top: 66px;
+      width: 35px;
+      height: 25px;
+      background-color: #a7e1f4;
+      border-radius: 8px;
+      z-index: 3;
+    }
+
+    /* ID 3: Small option card */
+    .accent-card-3 {
+      position: absolute;
+      left: 93px;
+      top: 207px;
+      width: 35px;
+      height: 26px;
+      background-color: #9fc9ec;
+      border-radius: 6px;
+      z-index: 4;
+    }
+
+    /* ID 9: Small accent block */
+    .accent-block-9 {
+      position: absolute;
+      left: 137px;
+      top: 211px;
+      width: 28px;
+      height: 23px;
+      background-color: #a3cdee;
+      border-radius: 6px;
+      z-index: 4;
+    }
+
+    /* ID 10: Extra small element */
+    .accent-dot-10 {
+      position: absolute;
+      left: 248px;
+      top: 227px;
+      width: 17px;
+      height: 15px;
+      background-color: #d6e8e9;
+      border-radius: 4px;
+      z-index: 4;
+    }
+
+    /* Navigation/Indicator Dots mapping (IDs 12, 17, 11, 15) */
+    .indicator-12 {
+      position: absolute;
+      left: 52px;
+      top: 326px;
+      width: 9px;
+      height: 11px;
+      background-color: #727375;
+      border-radius: 50%;
+      z-index: 6;
+    }
+
+    .indicator-17 {
+      position: absolute;
+      left: 105px;
+      top: 321px;
+      width: 11px;
+      height: 16px;
+      background-color: #b8b9ba;
+      border-radius: 6px;
+      z-index: 6;
+    }
+
+    .indicator-11 {
+      position: absolute;
+      left: 158px;
+      top: 326px;
+      width: 11px;
+      height: 11px;
+      background-color: #9e9fa0;
+      border-radius: 50%;
+      z-index: 6;
+    }
+
+    .indicator-15 {
+      position: absolute;
+      left: 207px;
+      top: 326px;
+      width: 10px;
+      height: 11px;
+      background-color: #9a9b9c;
+      border-radius: 50%;
+      z-index: 6;
+    }
+
+    /* Bottom Pills Footer (IDs 13 & 14) */
+    .footer-pill-13 {
+      position: absolute;
+      left: 87px;
+      top: 424px;
+      width: 57px;
+      height: 9px;
+      background-color: #c9c9ca;
+      border-radius: 5px;
+      z-index: 6;
+    }
+
+    .footer-pill-14 {
+      position: absolute;
+      left: 148px;
+      top: 424px;
+      width: 25px;
+      height: 10px;
+      background-color: #cbcccc;
+      border-radius: 5px;
+      z-index: 6;
+    }
+
+    /* Micro Indicator */
+    .micro-indicator-16 {
+      position: absolute;
+      left: 8px;
+      top: 170px;
+      width: 5px;
+      height: 7px;
+      background-color: #f9f4f4;
+      border-radius: 2px;
+      z-index: 6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-screen">
+    <!-- Base Canvas Layer -->
+    <div class="bg-layer"></div>
+
+    <!-- Status Bar Mock -->
+    <div class="status-bar">
+      <div>9:41</div>
+      <div class="status-icons">
+        <span>📶</span>
+        <span>📶</span>
+      </div>
+    </div>
+
+    <!-- Main Content mapped visually (ID 2 text content) -->
+    <div class="content-header">
+      <h1>Smart rides<br>one app.</h1>
+      
+      <div class="ride-options-list">
+        <div class="ride-option-card">
+          <div class="option-indicator" style="background-color: #a8cb7b;"></div>
+          <div class="option-details">
+            <div class="option-title">Personal anytime</div>
+            <div class="option-subtitle">On-demand quick travel</div>
+          </div>
+        </div>
+
+        <div class="ride-option-card">
+          <div class="option-indicator" style="background-color: #92dbf2;"></div>
+          <div class="option-details">
+            <div class="option-title">Easy office commutes</div>
+            <div class="option-subtitle">Scheduled professional routes</div>
+          </div>
+        </div>
+
+        <div class="ride-option-card">
+          <div class="option-indicator" style="background-color: #9fc9ec;"></div>
+          <div class="option-details">
+            <div class="option-title">Shared scheduled trips</div>
+            <div class="option-subtitle">Eco & pocket friendly</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Graphical Coordinates Mapped Layers -->
+    <div class="accent-card-6"></div>
+    <div class="accent-pill-1"></div>
+    <div class="accent-bar-5"></div>
+    <div class="accent-pill-4"></div>
+    <div class="accent-tag-8"></div>
+    <div class="accent-card-3"></div>
+    <div class="accent-block-9"></div>
+    <div class="accent-dot-10"></div>
+    
+    <!-- Controls & Nav Dots -->
+    <div class="indicator-12"></div>
+    <div class="indicator-17"></div>
+    <div class="indicator-11"></div>
+    <div class="indicator-15"></div>
+    <div class="micro-indicator-16"></div>
+
+    <!-- Bottom Action Pill Elements -->
+    <div class="footer-pill-13"></div>
+    <div class="footer-pill-14"></div>
+  </div>
+
+</body>
+</html>

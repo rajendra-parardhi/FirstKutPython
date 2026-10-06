@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Set Dashboard</title>
+  <style>
+    :root {
+      --bg-color: #f9f9fa;
+      --card-bg: #fafafa;
+      --accent-blue: #3263ae;
+      --light-blue: #bdcfeb;
+      --gray-1: #d1d2d3;
+      --gray-2: #cececf;
+      --gray-3: #c3c4c5;
+      --gray-4: #8f9092;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #eef1f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    /* Enforces 1:1 Aspect Ratio of the Design Spec */
+    .screen-container {
+      position: relative;
+      width: 100%;
+      max-width: 599px;
+      aspect-ratio: 1 / 1;
+      background-color: var(--bg-color);
+      border-radius: 32px;
+      box-shadow: 0 24px 48px rgba(50, 99, 174, 0.08);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+
+    /* ID 0: Hero Section Placement */
+    .id0-hero {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 44.9%; /* 269/599 */
+      padding: 40px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .id0-hero h1 {
+      margin: 0;
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: var(--accent-blue);
+      letter-spacing: -1px;
+    }
+
+    .id0-hero p {
+      margin: 6px 0 0 0;
+      color: var(--gray-4);
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    /* ID 3: Styled Interactive Preferences Card */
+    .id3-card {
+      position: absolute;
+      top: 20%; /* Styled offset to layout beautifully within boundaries */
+      left: 6.6%;
+      width: 86.8%;
+      height: 26.87%; /* 161/599 */
+      background-color: var(--card-bg);
+      border-radius: 24px;
+      box-shadow: 0 12px 32px rgba(50, 99, 174, 0.05);
+      border: 1.5px solid #eef0f2;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-badge {
+      background-color: rgba(50, 99, 174, 0.1);
+      color: var(--accent-blue);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 8px;
+    }
+
+    .card-title {
+      font-weight: 800;
+      color: #1f2937;
+      font-size: 0.95rem;
+      margin-left: 8px;
+    }
+
+    .arrow-icon {
+      color: var(--gray-4);
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+
+    .card-divider {
+      height: 1px;
+      background-color: #f3f4f6;
+    }
+
+    .badge-container {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .badge-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .badge {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background-color: #ffffff;
+      border: 1px solid #e5e7eb;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #4b5563;
+      white-space: nowrap;
+    }
+
+    .badge-icon {
+      color: var(--accent-blue);
+      font-size: 0.85rem;
+    }
+
+    /* Coordinate-precise Accent Pill Elements */
+    .id8-dot {
+      position: absolute;
+      top: 2%; /* 12/599 */
+      left: 70.28%; /* 421/599 */
+      width: 1.5%; /* 9/599 */
+      height: 1.5%;
+      background-color: var(--light-blue);
+      border-radius: 50%;
+    }
+
+    .id4-pill {
+      position: absolute;
+      top: 5.17%; /* 31/599 */
+      left: 70.28%; /* 421/599 */
+      width: 1.83%; /* 11/599 */
+      height: 9.18%; /* 55/599 */
+      background-color: var(--gray-1);
+      border-radius: 6px;
+    }
+
+    .id5-pill {
+      position: absolute;
+      top: 24.54%; /* 147/599 */
+      left: 70.28%; /* 421/599 */
+      width: 1.83%; /* 11/599 */
+      height: 5.17%; /* 31/599 */
+      background-color: var(--gray-2);
+      border-radius: 6px;
+    }
+
+    .id7-pill {
+      position: absolute;
+      top: 17.69%; /* 106/599 */
+      left: 53.92%; /* 323/599 */
+      width: 2.0%; /* 12/599 */
+      height: 1.17%; /* 7/599 */
+      background-color: var(--gray-4);
+      border-radius: 4px;
+    }
+
+    .id6-pill {
+      position: absolute;
+      top: 17.36%; /* 104/599 */
+      left: 60.93%; /* 365/599 */
+      width: 1.5%; /* 9/599 */
+      height: 2.33%; /* 14/599 */
+      background-color: var(--gray-3);
+      border-radius: 4px;
+    }
+
+    .id2-pill {
+      position: absolute;
+      top: 35.05%; /* 210/599 */
+      left: 20.03%; /* 120/599 */
+      width: 1.5%; /* 9/599 */
+      height: 9.84%; /* 59/599 */
+      background-color: var(--accent-blue);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(50, 99, 174, 0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="screen-container">
+    <!-- ID 0: Hero Header Container -->
+    <div class="id0-hero">
+      <h1>All Set</h1>
+      <p>Everything is ready for your next trip</p>
+    </div>
+
+    <!-- ID 3: Styled Interactive Preferences Card -->
+    <div class="id3-card">
+      <div class="card-header">
+        <div style="display: flex; align-items: center;">
+          <span class="status-badge">9:41</span>
+          <span class="card-title">Office Ride Active</span>
+        </div>
+        <span class="arrow-icon">&#10095;</span>
+      </div>
+      
+      <div class="card-divider"></div>
+
+      <div class="badge-container">
+        <div class="badge"><span class="badge-icon">✦</span> Auto Pickup</div>
+        <div class="badge"><span class="badge-icon">📤</span> Easy Request</div>
+        <div class="badge"><span class="badge-icon">🏢</span> Company Billing</div>
+      </div>
+    </div>
+
+    <!-- Precise Accent Coordinates mapped from design spec -->
+    <div class="id8-dot"></div>
+    <div class="id4-pill"></div>
+    <div class="id5-pill"></div>
+    <div class="id7-pill"></div>
+    <div class="id6-pill"></div>
+    <div class="id2-pill"></div>
+  </div>
+
+</body>
+</html>

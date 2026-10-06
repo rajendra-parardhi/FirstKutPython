@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirAware AI - Smart Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #1A1D21;
+            --card-bg-color: #222830;
+            --text-color: #E0E0E0;
+            --subtle-text-color: #A0A0A0;
+            --input-bg-color: #313840;
+            --border-color: #3E444B;
+            --accent-green: #4CAF50;
+            --accent-orange: #FF9800;
+            --accent-red: #F44336;
+            --accent-blue: #64B5F6;
+            --pm25-red-bar: #EF5350;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            font-size: 14px;
+        }
+
+        .dashboard-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 380px; /* Adjusted width based on screenshot */
+            background-color: var(--card-bg-color);
+            padding: 20px 25px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .sidebar-section {
+            background-color: var(--card-bg-color); /* Maintain card-like feel */
+            border-radius: 8px;
+            padding: 15px 0; /* Padding inside the sidebar sections */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            /* No explicit border or shadow here, relying on sidebar background */
+        }
+
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-panel .header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .control-panel .icon {
+            font-size: 30px;
+            color: var(--accent-orange); /* Thermometer color */
+            margin-left: -5px; /* Adjust icon position */
+        }
+        .control-panel .icon span {
+            display: block;
+            margin-top: -8px; /* Adjust sun position */
+            font-size: 20px;
+        }
+
+
+        .control-panel h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .admin-mode {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 2px;
+        }
+
+        .admin-mode input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            background-color: var(--input-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            cursor: pointer;
+            outline: none;
+            position: relative;
+        }
+
+        .admin-mode input[type="checkbox"]:checked {
+            background-color: var(--accent-blue); /* Or a specific checkmark color */
+            border-color: var(--accent-blue);
+        }
+
+        .admin-mode input[type="checkbox"]:checked::after {
+            content: '\2713'; /* Checkmark character */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            color: white;
+        }
+
+        .admin-mode label {
+            font-size: 15px;
+            color: var(--subtle-text-color);
+        }
+
+        .divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 10px 0;
+        }
+
+        .select-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .select-group select,
+        .select-group input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            background-color: var(--input-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            font-size: 15px;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            cursor: pointer;
+        }
+
+        .select-group select {
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%23E0E0E0" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 40px;
+        }
+
+        .pollutant-levels h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .pollutant-item {
+            margin-bottom: 10px;
+        }
+
+        .pollutant-item .label {
+            font-size: 15px;
+            color: var(--subtle-text-color);
+            margin-bottom: 5px;
+        }
+
+        .pollutant-item .value {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .pollutant-item .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--input-bg-color);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .pollutant-item .progress-bar-fill {
+            height: 100%;
+            background-color: var(--pm25-red-bar); /* Example for PM2.5 */
+            border-radius: 4px;
+            width: 70%; /* Example width, adjust as needed */
+        }
+
+        .weather-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-top: 15px; /* Spacing from above content */
+            border-top: 1px solid var(--border-color);
+            margin-top: auto; /* Push to bottom */
+        }
+
+        .weather-info .icon {
+            font-size: 24px;
+            color: var(--accent-blue);
+        }
+
+        .weather-info .details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .weather-info .temperature {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .weather-info .description {
+            font-size: 13px;
+            color: var(--subtle-text-color);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex-grow: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .main-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .main-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-color);
+        }
+
+        .main-header .status-deploy {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .main-header .status {
+            font-size: 15px;
+            color: var(--subtle-text-color);
+        }
+
+        .main-header .status span {
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        .main-header .deploy-button {
+            background-color: var(--card-bg-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+
+        .main-header .deploy-button:hover {
+            background-color: #2D333A;
+        }
+
+        .dashboard-widgets {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            height: calc(100% - 120px); /* Adjust height based on header and gaps */
+        }
+
+        .dashboard-card {
+            background-color: var(--card-bg-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-color);
+        }
+
+        .live-prediction-card {
+            flex: 1;
+            min-width: 400px;
+            max-width: 55%; /* Adjusted for better visual balance */
+            height: 100%;
+        }
+
+        .historical-trends-card {
+            flex: 1;
+            min-width: 500px;
+            height: 100%;
+        }
+
+        .dashboard-card h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: var(--text-color);
+        }
+
+        .dashboard-card h3 {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--subtle-text-color);
+            margin-bottom: 15px;
+        }
+
+        /* Gauge Chart */
+        .gauge-container {
+            position: relative;
+            width: 100%;
+            padding-top: 50%; /* Aspect ratio for the semicircular gauge */
+            margin-top: 20px;
+        }
+
+        .gauge-chart {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 200%; /* Make it fill the gauge-container for the semicircle effect */
+            overflow: hidden; /* Hide the bottom half */
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--accent-green) 0% 30%,    /* Green segment */
+                var(--accent-orange) 30% 60%,  /* Orange segment */
+                var(--accent-red) 60% 100%     /* Red segment */
+            );
+            transform: translateY(50%); /* Move up to form a semicircle */
+        }
+
+        .gauge-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%; /* Inner circle size */
+            height: 160%;
+            background-color: var(--card-bg-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 1;
+        }
+
+        .gauge-value {
+            font-size: 60px;
+            font-weight: 700;
+            color: var(--text-color);
+            margin-top: -30%; /* Pull value up to center within the semicircle */
+        }
+        .gauge-labels {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 2;
+        }
+        .gauge-label {
+            position: absolute;
+            font-size: 12px;
+            color: var(--subtle-text-color);
+            transform: translate(-50%, -50%);
+        }
+        .gauge-label.l-0 { left: 0; top: 100%; transform: translate(-50%, 0); }
+        .gauge-label.l-100 { left: 15%; top: 35%; transform: rotate(-45deg); }
+        .gauge-label.l-200 { left: 50%; top: 0; transform: translate(-50%, -50%); }
+        .gauge-label.l-300 { right: 0; top: 100%; transform: translate(50%, 0); } /* Adjusted position */
+        .gauge-label.l-0 { left: 5%; top: 90%; transform: translate(-50%, 0); }
+        .gauge-label.l-100 { left: 20%; top: 25%; transform: rotate(-45deg); }
+        .gauge-label.l-200 { left: 50%; top: -5%; transform: translate(-50%, -50%); }
+        .gauge-label.l-300 { right: 5%; top: 90%; transform: translate(50%, 0); }
+        /* Re-adjusting specific labels for better visual alignment */
+        .gauge-label.val-100 { left: 22%; top: 20%; transform: translate(-50%, -50%); }
+        .gauge-label.val-200 { left: 50%; top: -5%; transform: translate(-50%, -50%); }
+        .gauge-label.val-300 { left: 78%; top: 20%; transform: translate(-50%, -50%); }
+        /* Final adjustment for gauge labels */
+        .gauge-label.val-100 { left: 25%; top: 15%; transform: translate(-50%, -50%); }
+        .gauge-label.val-200 { left: 50%; top: -5%; transform: translate(-50%, -50%); }
+        .gauge-label.val-300 { left: 75%; top: 15%; transform: translate(-50%, -50%); }
+
+        /* Line Chart (Placeholder) */
+        .line-chart-container {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            align-items: flex-end; /* Align lines to bottom */
+            justify-content: space-between;
+            padding: 10px 0;
+        }
+        .line-chart-y-axis {
+            position: absolute;
+            left: -30px; /* Adjust position */
+            top: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column-reverse;
+            justify-content: space-between;
+            padding: 0 5px;
+        }
+        .line-chart-y-axis span {
+            font-size: 12px;
+            color: var(--subtle-text-color);
+            margin-right: 5px;
+        }
+
+        .line-chart {
+            width: 100%;
+            height: calc(100% - 30px); /* Adjust height for Y-axis labels */
+            background: linear-gradient(to top, #313840 1px, transparent 1px);
+            background-size: 100% 50px; /* Grid lines */
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .line-chart-path {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* This is a placeholder for a complex SVG or canvas chart */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 200" preserveAspectRatio="none"><path d="M0,150 Q50,120 100,100 T200,80 T300,120 T400,90 T500,150 T600,100 T700,160 T800,90 T900,130 T1000,70" fill="none" stroke="%2364B5F6" stroke-width="2"/></svg>');
+            background-size: cover;
+            background-repeat: no-repeat;
+            transform: scaleY(0.7); /* Adjust vertical scaling to match screenshot */
+            transform-origin: bottom;
+            left: -20px; /* Adjust slightly left */
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-section control-panel">
+                <div class="header">
+                    <div class="icon">
+                        &#x1F321;<span>&#x2600;</span> <!-- Thermometer with sun -->
+                    </div>
+                    <h3>Control Panel</h3>
+                </div>
+                <div class="admin-mode">
+                    <input type="checkbox" id="adminMode">
+                    <label for="adminMode">Enable Admin Mode</label>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="sidebar-section select-group">
+                <label for="citySelect">Select City for Analytics</label>
+                <select id="citySelect">
+                    <option value="ahmedabad" selected>Ahmedabad</option>
+                    <option value="mumbai">Mumbai</option>
+                    <option value="delhi">Delhi</option>
+                </select>
+            </div>
+
+            <div class="sidebar-section select-group">
+                <label for="dateSelect">Select Date</label>
+                <input type="text" id="dateSelect" value="2015/02/26">
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="sidebar-section pollutant-levels">
+                <h3>Live Pollutant Levels</h3>
+                <div class="pollutant-item">
+                    <div class="label">PM2.5 (Fine Particles)</div>
+                    <div class="value">78.07</div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" style="width: 78%;"></div>
+                    </div>
+                </div>
+                <div class="pollutant-item">
+                    <div class="label">PM10 (Dust)</div>
+                    <div class="value">120.15</div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-fill" style="width: 85%; background-color: var(--accent-orange);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="weather-info">
+                <div class="icon">&#x2601;</div> <!-- Cloud icon -->
+                <div class="details">
+                    <div class="temperature">28°C</div>
+                    <div class="description">Mostly cloudy</div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="main-header">
+                <h1>AirAware: Smart Air Quality Analytics</h1>
+                <div class="status-deploy">
+                    <span class="status">Dashboard Status: <span style="color: var(--accent-green);">Active</span> | Target City: <span>Ahmedabad</span></span>
+                    <button class="deploy-button">Deploy</button>
+                    <!-- Three dots icon could be added here using an SVG or font icon -->
+                    <svg style="color:var(--subtle-text-color);" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 10C10.9 10 10 10.9 10 12C10 13.1 10.9 14 12 14C13.1 14 14 13.1 14 12C14 10.9 13.1 10 12 10ZM19 10C17.9 10 17 10.9 17 12C17 13.1 17.9 14 19 14C20.1 14 21 13.1 21 12C21 10.9 20.1 10 19 10ZM5 10C3.9 10 3 10.9 3 12C3 13.1 3.9 14 5 14C6.1 14 7 13.1 7 12C7 10.9 6.1 10 5 10Z" fill="currentColor"/>
+                    </svg>
+                </div>
+            </header>
+
+            <section class="dashboard-widgets">
+                <div class="dashboard-card live-prediction-card">
+                    <h2>Live Prediction Visual</h2>
+                    <div class="gauge-container">
+                        <div class="gauge-chart"></div>
+                        <div class="gauge-center">
+                            <div class="gauge-value">105</div>
+                        </div>
+                        <div class="gauge-labels">
+                            <span class="gauge-label val-100">100</span>
+                            <span class="gauge-label val-200">200</span>
+                            <span class="gauge-label val-300">300</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-card historical-trends-card">
+                    <h2>Historical Trends: Ahmedabad</h2>
+                    <h3>PM2.5 Levels over the last year</h3>
+                    <div class="line-chart-container">
+                        <div class="line-chart-y-axis">
+                            <span>200</span>
+                            <span>150</span>
+                            <span>100</span>
+                            <span>50</span>
+                        </div>
+                        <div class="line-chart">
+                            <div class="line-chart-path"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

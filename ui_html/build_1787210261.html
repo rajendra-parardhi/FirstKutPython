@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ride Booking Interface</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #f5f5f7;
+      font-family: 'Roboto', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    /* Container maintaining structural integrity and DesignIR proportions */
+    .app-frame {
+      width: 375px;
+      height: 812px;
+      background-color: #eceded;
+      border-radius: 40px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+      position: relative;
+      border: 8px solid #2d3135;
+    }
+
+    /* Ratio conversions based on target coordinates (Width: 218, Height: 607) */
+    .element {
+      position: absolute;
+    }
+
+    /* Map area background (Child 2) */
+    .map-bg {
+      left: 0;
+      top: 0;
+      width: 88%;
+      height: 99%;
+      background-color: #eeefef;
+      border-bottom-right-radius: 24px;
+    }
+
+    /* Decorative map grid lines */
+    .map-grid {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+    }
+    .grid-line-h {
+      position: absolute;
+      top: 15%;
+      left: 10%;
+      width: 80%;
+      height: 2px;
+      background-color: rgba(255,255,255,0.7);
+    }
+    .grid-line-v {
+      position: absolute;
+      top: 5%;
+      left: 30%;
+      width: 2px;
+      height: 90%;
+      background-color: rgba(255,255,255,0.7);
+    }
+
+    /* Bottom Sheet Container (Child 23) */
+    .bottom-sheet {
+      left: 0;
+      top: 22.4%; /* 136 / 607 */
+      width: 100%;
+      height: 77.6%;
+      background-color: #f4f4f6;
+      border-top-left-radius: 24px;
+      border-top-right-radius: 24px;
+      box-shadow: 0 -10px 20px rgba(0,0,0,0.05);
+    }
+
+    /* Top bar container (Child 12) */
+    .top-bar {
+      left: 0;
+      top: 0;
+      width: 97.7%; /* 213 / 218 */
+      height: 21.9%; /* 133 / 607 */
+      background-color: #dddedc;
+    }
+
+    /* Left side accent element (Child 6) */
+    .header-accent {
+      left: 4.1%; /* 9 / 218 */
+      top: 0;
+      width: 32.5%; /* 71 / 218 */
+      height: 21.9%;
+      background-color: #e6e0ce;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+    }
+
+    /* Right top accent line (Child 26) */
+    .top-notch-accent {
+      left: 56.8%; /* 124 / 218 */
+      top: 0;
+      width: 6.8%; /* 15 / 218 */
+      height: 10.8%; /* 66 / 607 */
+      background-color: #edeef2;
+    }
+
+    /* Header text (Child 3) */
+    .header-text {
+      left: 33.4%; /* 73 / 218 */
+      top: 11.3%; /* 69 / 607 */
+      font-size: 14px;
+      font-weight: 700;
+      color: #3f4245;
+    }
+
+    /* Pickup location field background (Child 7) */
+    .pickup-field {
+      left: 2.3%; /* 5 / 218 */
+      top: 24.8%; /* 151 / 607 */
+      width: 90%; /* 196 / 218 */
+      height: 7.4%; /* 45 / 607 */
+      background-color: #f6f7f9;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      padding-left: 48px;
+      padding-right: 40px;
+      border: 1px solid #e1e3e6;
+      font-size: 12px;
+      color: #444;
+    }
+
+    /* Destination field background (Child 4) */
+    .dest-field {
+      left: 2.3%;
+      top: 33.7%; /* 205 / 607 */
+      width: 90%;
+      height: 7.4%;
+      background-color: #f9fafb;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      padding-left: 48px;
+      border: 1px solid #e1e3e6;
+      font-size: 12px;
+      color: #888;
+    }
+
+    /* Pickup Dot Icon (Child 15) */
+    .pickup-dot {
+      left: 6.4%; /* 14 / 218 */
+      top: 26.5%; /* 161 / 607 */
+      width: 26px;
+      height: 26px;
+      background-color: #e7eefb;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pickup-dot::after {
+      content: '';
+      width: 10px;
+      height: 10px;
+      background-color: #3b82f6;
+      border-radius: 50%;
+    }
+
+    /* Destination Dot Icon (Child 14) */
+    .dest-dot {
+      left: 6.4%;
+      top: 35.2%; /* 214 / 607 */
+      width: 26px;
+      height: 26px;
+      background-color: #e9f0fc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .dest-dot::after {
+      content: '';
+      width: 10px;
+      height: 10px;
+      background-color: #ef4444;
+      border-radius: 50%;
+    }
+
+    /* Interactive arrows and shortcuts (Child 20 & 18) */
+    .arrow-right {
+      left: 78.4%; /* 171 / 218 */
+      top: 27.5%; /* 167 / 607 */
+      width: 23px;
+      height: 14px;
+      background-color: #d9e5f7;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #3b82f6;
+      cursor: pointer;
+    }
+
+    .map-tag {
+      left: 80.7%; /* 176 / 218 */
+      top: 43.3%; /* 263 / 607 */
+      width: 27px;
+      height: 13px;
+      background-color: #e0e7f5;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: bold;
+      color: #3b82f6;
+    }
+
+    /* Service Options Section */
+    .service-option-1 {
+      left: 33.9%; /* 74 / 218 */
+      top: 46.4%; /* 282 / 607 */
+      width: 60px;
+      height: 60px;
+      background-color: #e6eaed;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .service-label-1 {
+      left: 33.9%;
+      top: 52%; /* 316 / 607 */
+      width: 59px;
+      height: 26px;
+      background-color: #f5f5f6;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .service-option-2 {
+      left: 65.5%; /* 143 / 218 */
+      top: 46.4%;
+      width: 60px;
+      height: 60px;
+      background-color: #eceff1;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .service-label-2 {
+      left: 66%; /* 144 / 218 */
+      top: 52%;
+      width: 59px;
+      height: 26px;
+      background-color: #f7f7f8;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    /* Service Option 3 (E for Economy) (Child 1) */
+    .service-option-3 {
+      left: 33.9%;
+      top: 58%; /* 352 / 607 */
+      width: 60px;
+      height: 60px;
+      background-color: #e5e8ec;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #3b82f6;
+    }
+
+    /* Side Nav indicators (Child 25 & 19) */
+    .nav-arrow-left {
+      left: 9.6%; /* 21 / 218 */
+      top: 59.8%; /* 363 / 607 */
+      width: 28px;
+      height: 15px;
+      background-color: #abb0b1;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 10px;
+    }
+
+    .nav-arrow-right {
+      left: 73.3%; /* 160 / 218 */
+      top: 59.8%;
+      width: 28px;
+      height: 15px;
+      background-color: #acb1b2;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 10px;
+    }
+
+    /* Fare Box Container (Child 16, 13, 11) */
+    .fare-container {
+      left: 2.3%;
+      top: 69.1%; /* 420 / 607 */
+      width: 91.2%; /* 199 / 218 */
+      height: 7.1%; /* 43 / 607 */
+      background-color: #f6f5f4;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+    }
+
+    .fare-label {
+      font-size: 12px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .fare-button {
+      width: 59px;
+      height: 34px;
+      background-color: #ebe5e1;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+      color: #5d4037;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .fare-button:hover {
+      background-color: #ded7d2;
+    }
+
+    /* Recent searches title (Child 21) */
+    .recent-searches-title {
+      left: 6.4%;
+      top: 78.5%; /* 477 / 607 */
+      font-size: 9px;
+      font-weight: 700;
+      color: #8a9099;
+      letter-spacing: 0.8px;
+    }
+
+    /* Structured search content (drawn from Child 23 label flow) */
+    .recent-searches-list {
+      left: 6.4%;
+      top: 81.5%;
+      width: 87%;
+      max-height: 10%;
+      overflow-y: auto;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #555;
+    }
+
+    .recent-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .recent-item::before {
+      content: '•';
+      color: #6d94d4;
+      margin-right: 6px;
+      font-weight: bold;
+    }
+
+    /* Navigation dots (Child 24, 17, 22) */
+    .nav-dots {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .dot-blue {
+      width: 13px;
+      height: 13px;
+      background-color: #6d94d4;
+      border-radius: 50%;
+    }
+
+    .dot-grey {
+      width: 13px;
+      height: 13px;
+      background-color: #b6b7b8;
+      border-radius: 50%;
+    }
+
+    .dot-light {
+      width: 11px;
+      height: 13px;
+      background-color: #d4d5d6;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-frame">
+    <!-- Map Canvas Background -->
+    <div class="element map-bg">
+      <div class="map-grid">
+        <div class="grid-line-h"></div>
+        <div class="grid-line-v"></div>
+      </div>
+    </div>
+
+    <!-- Header Structure -->
+    <div class="element top-bar"></div>
+    <div class="element header-accent"></div>
+    <div class="element top-notch-accent"></div>
+    <div class="element header-text">Enter Location</div>
+
+    <!-- Bottom Sheet Content -->
+    <div class="element bottom-sheet"></div>
+
+    <!-- Inputs -->
+    <div class="element pickup-field">Pick up Current Location</div>
+    <div class="element pickup-dot"></div>
+    <div class="element arrow-right">&#10141;</div>
+
+    <div class="element dest-field">Click to Enter Destination</div>
+    <div class="element dest-dot"></div>
+    <div class="element map-tag">MAP</div>
+
+    <!-- Service Selection Row -->
+    <div class="element service-option-1">🚗</div>
+    <div class="element service-label-1">Comfort</div>
+
+    <div class="element service-option-2">⚡</div>
+    <div class="element service-label-2">Eco Ride</div>
+
+    <div class="element service-option-3">E</div>
+
+    <!-- Directional Navigation inside sheet -->
+    <div class="element nav-arrow-left">&#9664;</div>
+    <div class="element nav-arrow-right">&#9654;</div>
+
+    <!-- Price Section -->
+    <div class="element fare-container">
+      <span class="fare-label">Estimated Fare</span>
+      <div class="fare-button">Pay</div>
+    </div>
+
+    <!-- Recent Searches -->
+    <div class="element recent-searches-title">RECENT SEARCHES</div>
+    <div class="element recent-searches-list">
+      <div class="recent-item">Secunderabad Hxtlurandd</div>
+      <div class="recent-item">Corporate Ride Podl</div>
+    </div>
+
+    <!-- Bottom App Navigation Dot Elements -->
+    <div class="nav-dots">
+      <div class="dot-blue"></div>
+      <div class="dot-grey"></div>
+      <div class="dot-light"></div>
+    </div>
+  </div>
+
+</body>
+</html>

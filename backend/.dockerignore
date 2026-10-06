@@ -1,0 +1,27 @@
+# Secrets / local env
+.env
+.env.*
+*.env
+
+# Python local state
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.log
+
+# Runtime data -> lives on the /data volume, never in the image
+ui_vector_db/
+ui_vector_db_old/
+data/
+tmp_ingest/
+temp_render.html
+temp_render.png
+
+# Local model weights -> downloaded by the Dockerfile instead
+*.pth
+*.pt
+*.bin
+*.onnx
+*.safetensors

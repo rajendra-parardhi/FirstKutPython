@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Responsive Enriched Design</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #121212;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      max-width: 640px; /* Scale up layout responsively */
+      aspect-ratio: 319 / 206;
+      background-color: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Component 10 */
+    .component-10 {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 70.388%; /* 145 / 206 */
+      background-color: #1b060a;
+      z-index: 2;
+    }
+
+    /* Label text */
+    .label-text {
+      position: absolute;
+      width: 100%;
+      bottom: 8%;
+      text-align: center;
+      color: #ffffff;
+      font-size: clamp(10px, 3.5vw, 16px);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Component 1 (Bottom block) */
+    .component-1 {
+      position: absolute;
+      left: 0;
+      top: 44.66%; /* 92 / 206 */
+      width: 100%;
+      height: 55.34%; /* 114 / 206 */
+      background-color: #040203;
+      z-index: 1;
+    }
+
+    /* Children Elements */
+    .child {
+      position: absolute;
+    }
+
+    .child-0 { left: 15.67%; top: 4.14%; width: 7.84%; height: 57.24%; background-color: #c50e30; }
+    .child-9 { left: 9.09%; top: 3.45%; width: 6.27%; height: 60.00%; background-color: #060001; }
+    .child-12 { left: 0.00%; top: 4.14%; width: 8.78%; height: 30.34%; background-color: #7d091e; }
+    .child-7 { left: 73.98%; top: 3.45%; width: 8.46%; height: 24.83%; background-color: #010202; }
+    .child-5 { left: 90.28%; top: 9.66%; width: 7.52%; height: 17.93%; background-color: #020203; }
+    .child-4 { left: 65.20%; top: 9.66%; width: 7.21%; height: 17.93%; background-color: #020203; }
+    .child-8 { left: 42.32%; top: 9.66%; width: 7.21%; height: 17.93%; background-color: #020203; }
+    .child-3 { left: 60.50%; top: 3.45%; width: 2.51%; height: 24.14%; background-color: #020203; }
+    .child-16 { left: 67.40%; top: 37.93%; width: 4.39%; height: 13.10%; background-color: #010202; }
+    .child-6 { left: 35.74%; top: 37.93%; width: 4.39%; height: 10.34%; background-color: #010203; }
+    .child-15 { left: 43.57%; top: 37.93%; width: 4.39%; height: 10.34%; background-color: #010102; }
+    .child-2 { left: 61.13%; top: 10.34%; width: 2.19%; height: 17.24%; background-color: #030405; }
+    .child-13 { left: 76.80%; top: 55.17%; width: 4.39%; height: 7.59%; background-color: #303030; }
+    .child-22 { left: 76.49%; top: 14.48%; width: 3.45%; height: 8.28%; background-color: #000001; }
+    .child-14 { left: 54.23%; top: 14.48%; width: 2.19%; height: 12.41%; background-color: #000000; }
+    .child-18 { left: 53.92%; top: 37.93%; width: 2.51%; height: 10.34%; background-color: #010203; }
+    .child-20 { left: 61.44%; top: 34.48%; width: 1.57%; height: 13.79%; background-color: #010203; }
+    .child-17 { left: 36.68%; top: 55.17%; width: 2.51%; height: 7.59%; background-color: #2f2e2e; }
+    .child-24 { left: 43.89%; top: 55.17%; width: 2.51%; height: 7.59%; background-color: #212121; }
+    .child-26 { left: 52.66%; top: 55.17%; width: 2.19%; height: 7.59%; background-color: #363535; }
+    .child-25 { left: 68.97%; top: 57.24%; width: 2.19%; height: 6.90%; background-color: #444343; }
+    .child-11 { left: 60.50%; top: 3.45%; width: 2.51%; height: 5.52%; background-color: #020304; }
+    .child-19 { left: 61.76%; top: 37.93%; width: 1.25%; height: 10.34%; background-color: #020303; }
+    .child-21 { left: 85.58%; top: 57.24%; width: 1.88%; height: 5.52%; background-color: #434242; }
+    .child-23 { left: 44.51%; top: 20.69%; width: 2.51%; height: 3.45%; background-color: #000000; }
+  </style>
+</head>
+<body>
+
+  <div class="canvas-container">
+    <!-- Component 10 Container -->
+    <div class="component-10">
+      <div class="label-text">e 3 Global Thinkors Engaged Leaders</div>
+      
+      <!-- Hierarchical Children of Component 10 -->
+      <div class="child child-0"></div>
+      <div class="child child-9"></div>
+      <div class="child child-12"></div>
+      <div class="child child-7"></div>
+      <div class="child child-5"></div>
+      <div class="child child-4"></div>
+      <div class="child child-8"></div>
+      <div class="child child-3"></div>
+      <div class="child child-16"></div>
+      <div class="child child-6"></div>
+      <div class="child child-15"></div>
+      <div class="child child-2"></div>
+      <div class="child child-13"></div>
+      <div class="child child-22"></div>
+      <div class="child child-14"></div>
+      <div class="child child-18"></div>
+      <div class="child child-20"></div>
+      <div class="child child-17"></div>
+      <div class="child child-24"></div>
+      <div class="child child-26"></div>
+      <div class="child child-25"></div>
+      <div class="child child-11"></div>
+      <div class="child child-19"></div>
+      <div class="child child-21"></div>
+      <div class="child child-23"></div>
+    </div>
+
+    <!-- Component 1 Container -->
+    <div class="component-1"></div>
+  </div>
+
+</body>
+</html>

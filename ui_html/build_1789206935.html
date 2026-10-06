@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unified Studio Workspace</title>
+  <style>
+    :root {
+      --bg-canvas: #918e8f;
+      --header-bg: #837979;
+      --bar-bg: #492e2b;
+      --editor-bg: #161819;
+      --sidebar-bg: #e6eaf2;
+      --compose-bg: #b9ddf4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #1e1e1e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Standard responsive aspect ratio container matching 1916x1916 (1:1 aspect ratio) */
+    .canvas-container {
+      position: relative;
+      width: 95vmin;
+      height: 95vmin;
+      background-color: var(--bg-canvas);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* ID 0: White bottom dynamic viewport area */
+    .bottom-canvas {
+      position: absolute;
+      left: 0;
+      top: 56.52%; /* 1083 / 1916 */
+      width: 100%;
+      height: 21.5%; /* 412 / 1916 */
+      background-color: #ffffff;
+      border-top: 1px solid #e0e0e0;
+      z-index: 1;
+    }
+
+    /* ID 1: Top header / inbox background zone */
+    .header-zone {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 21.71%; /* 416 / 1916 */
+      background-color: var(--header-bg);
+      display: flex;
+      align-items: flex-end;
+      padding: 2.5%;
+      z-index: 2;
+    }
+
+    .header-zone h1 {
+      color: #ffffff;
+      font-size: 2.5cqi;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    /* ID 3: Global Navigation / Chrome Bar */
+    .chrome-bar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 9.18%; /* 176 / 1916 */
+      background-color: var(--bar-bg);
+      z-index: 5;
+      padding: 1.2% 2%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    .chrome-bar .title {
+      font-size: 1.3cqi;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chrome-bar .url {
+      font-size: 1cqi;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 0.2%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chrome-bar .alert {
+      font-size: 0.85cqi;
+      color: #ffe082;
+      margin-top: 0.1%;
+    }
+
+    /* ID 7: Small accent widget */
+    .accent-block-7 {
+      position: absolute;
+      left: 27.97%; /* 536/1916 */
+      top: 6.83%; /* 131/1916 */
+      width: 1.35%; /* 26/1916 */
+      height: 1.14%; /* 22/1916 */
+      background-color: #96807c;
+      border-radius: 4px;
+      z-index: 6;
+    }
+
+    /* ID 12: Accent Pill right side */
+    .accent-pill-12 {
+      position: absolute;
+      left: 66.7%; /* 1278/1916 */
+      top: 7.2%; /* 138/1916 */
+      width: 5.27%; /* 101/1916 */
+      height: 0.57%; /* 11/1916 */
+      background-color: #7a5450;
+      border-radius: 9999px;
+      z-index: 6;
+    }
+
+    /* ID 6: Left Sidebar */
+    .left-sidebar {
+      position: absolute;
+      left: 0;
+      top: 9.55%; /* 183 / 1916 */
+      width: 4.27%; /* 82 / 1916 */
+      height: 43.21%; /* 828 / 1916 */
+      background-color: var(--sidebar-bg);
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 2cqi;
+      gap: 2.5cqi;
+      border-right: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .sidebar-icon {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      color: #5f6368;
+      transition: color 0.2s ease;
+    }
+
+    .sidebar-icon:hover, .sidebar-icon.active {
+      color: #001d35;
+    }
+
+    .sidebar-icon svg {
+      width: 2.2cqi;
+      height: 2.2cqi;
+    }
+
+    .sidebar-icon span {
+      font-size: 0.9cqi;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    /* ID 4: Compose Button */
+    .compose-btn {
+      position: absolute;
+      left: 5.27%; /* 101 / 1916 */
+      top: 14.09%; /* 270 / 1916 */
+      width: 8.76%; /* 168 / 1916 */
+      height: 3.28%; /* 63 / 1916 */
+      background-color: var(--compose-bg);
+      border-radius: 16px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 1.2cqi;
+      font-weight: bold;
+      color: #001d35;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .compose-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .compose-btn svg {
+      width: 1.4cqi;
+      height: 1.4cqi;
+    }
+
+    /* ID 10: Accent container under workspace */
+    .accent-block-10 {
+      position: absolute;
+      left: 28.75%; /* 551/1916 */
+      top: 14.66%; /* 281/1916 */
+      width: 0.93%; /* 18/1916 */
+      height: 0.78%; /* 15/1916 */
+      background-color: #cccdcd;
+      border-radius: 2px;
+      z-index: 4;
+    }
+
+    /* ID 2: Main Code Editor Panel */
+    .code-editor {
+      position: absolute;
+      left: 25.83%; /* 495 / 1916 */
+      top: 16.59%; /* 318 / 1916 */
+      width: 71.03%; /* 1361 / 1916 */
+      height: 21.13%; /* 405 / 1916 */
+      background-color: var(--editor-bg);
+      border-radius: 12px;
+      z-index: 4;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      padding: 1.8%;
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #8fe3b4;
+      font-family: 'Courier New', Courier, monospace;
+      overflow-y: auto;
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 1.5%;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 0.8%;
+    }
+
+    .editor-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background-color: #ff5f56; }
+    .dot-yellow { background-color: #ffbd2e; }
+    .dot-green { background-color: #27c93f; }
+
+    .editor-title {
+      color: #9da5b4;
+      font-size: 1.1cqi;
+      margin-left: 8px;
+    }
+
+    .code-content {
+      font-size: 1.15cqi;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    /* ID 9: Purchases sidebar item bg placeholder */
+    .purchases-bg {
+      position: absolute;
+      left: 8.4%; /* 161/1916 */
+      top: 40.29%; /* 772/1916 */
+      width: 4.27%; /* 82/1916 */
+      height: 0.57%; /* 11/1916 */
+      background-color: #c6c8cb;
+      z-index: 3;
+    }
+
+    /* ID 11: Purchases Accent line */
+    .purchases-accent {
+      position: absolute;
+      left: 8.61%; /* 165/1916 */
+      top: 40.29%; /* 772/1916 */
+      width: 4.07%; /* 78/1916 */
+      height: 0.36%; /* 7/1916 */
+      background-color: #c9cbce;
+      z-index: 4;
+    }
+
+    /* Purchases Label */
+    .purchases-label {
+      position: absolute;
+      left: 8.4%;
+      top: 41.5%;
+      font-size: 1.1cqi;
+      font-weight: 500;
+      color: #ffffff;
+      z-index: 4;
+    }
+
+    /* ID 8: Promotions Accent / Tag */
+    .promotions-tag {
+      position: absolute;
+      left: 8.4%; /* 161/1916 */
+      top: 48.53%; /* 930/1916 */
+      width: 5.06%; /* 97/1916 */
+      height: 0.78%; /* 15/1916 */
+      background-color: #b6b8bb;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 2px;
+    }
+
+    .promotions-tag span {
+      font-size: 0.7cqi;
+      color: #1e1e1e;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="canvas-container">
+    
+    <!-- ID 0: Bottom canvas area -->
+    <div class="bottom-canvas"></div>
+
+    <!-- ID 1: Header Background -->
+    <div class="header-zone">
+      <h1>Gmail insent X Upgrade F7of 130 Inbox</h1>
+    </div>
+
+    <!-- ID 3: Chrome Nav Bar -->
+    <div class="chrome-bar">
+      <div class="title">Google AI Studio &nbsp;•&nbsp; no subject - presingirajakumar@gmail.com &nbsp;•&nbsp; Unified Code Generation Studio</div>
+      <div class="url">Ask Gemini &nbsp;|&nbsp; mail.google.com/mail/u/0/#sent/KtbxLvhZgmsHKRrZGbrHlcVNjxVsqZcbkl</div>
+      <div class="alert">Continue where you left off. Chrome can restore your tabs next time you restart.</div>
+    </div>
+
+    <!-- ID 7: Accent block -->
+    <div class="accent-block-7"></div>
+
+    <!-- ID 12: Accent Pill -->
+    <div class="accent-pill-12"></div>
+
+    <!-- ID 6: Left Sidebar -->
+    <div class="left-sidebar">
+      <div class="sidebar-icon active">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+        <span>Mail</span>
+      </div>
+      <div class="sidebar-icon">
+        <svg fill="currentColor" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+        <span>Meet</span>
+      </div>
+    </div>
+
+    <!-- ID 4: Compose Button -->
+    <div class="compose-btn">
+      <svg fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+      Compose
+    </div>
+
+    <!-- ID 10: Under-workspace visual element -->
+    <div class="accent-block-10"></div>
+
+    <!-- ID 2: Main Code Editor -->
+    <div class="code-editor">
+      <div class="editor-header">
+        <div class="editor-dot dot-red"></div>
+        <div class="editor-dot dot-yellow"></div>
+        <div class="editor-dot dot-green"></div>
+        <div class="editor-title">inference_engine.py</div>
+      </div>
+      <div class="code-content">with torch.no_grad():
+    f1 = clip_model.encode_text(t1)
+    f2 = clip_model.encode_image(t2)
+    f1 = f1 / f1.norm(dim=-1, keepdim=True)
+    f2 = f2 / f2.norm(dim=-1, keepdim=True)
+    cosine_similarity = (f1 @ f2.T).item()
+    percentage_similarity = round(cosine_similarity * 100.0, 2)
+    return max(0.0, min(100.0, percentage_similarity))
+except Exception as clip_err:
+    print(f"CLIP calculation engine exception: {str(clip_err)}")
+    return 0.0
+
+# FASTAPI SERVER DEFINITIONS
+app = FastAPI(title="FirstKutAI Integrated Synthesis Engine")</div>
+    </div>
+
+    <!-- ID 9: Purchases Background placeholder -->
+    <div class="purchases-bg"></div>
+
+    <!-- ID 11: Purchases Accent Line -->
+    <div class="purchases-accent"></div>
+
+    <!-- Purchases Label (positioned according to layout space context) -->
+    <div class="purchases-label">Purchases</div>
+
+    <!-- ID 8: Promotions Accent / Tag -->
+    <div class="promotions-tag">
+      <span>Promotions</span>
+    </div>
+
+  </div>
+
+</body>
+</html>

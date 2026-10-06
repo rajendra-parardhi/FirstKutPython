@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirAware AI - Smart Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --background-dark: #1A1C22;
+            --sidebar-dark: #1E2127;
+            --card-dark: #24272D;
+            --input-dark: #2A2E34;
+            --text-light: #E0E0E0;
+            --text-secondary: #A0A0A0;
+            --divider-color: #ffffff1a; /* 10% white */
+            --blue-accent: #007bff;
+            --green-accent: #28a745;
+            --orange-accent: #ffc107;
+            --red-accent: #dc3545;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: var(--background-dark);
+            color: var(--text-light);
+            display: flex;
+            height: 100vh;
+            overflow: hidden; /* Prevent scrolling for desktop view */
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- Typography --- */
+        h1 { font-size: 2.375rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: 0.5px; } /* ~38px */
+        h2 { font-size: 1.5rem; font-weight: 600; } /* ~24px */
+        h3 { font-size: 1.125rem; font-weight: 500; } /* ~18px */
+        p { font-size: 1rem; color: var(--text-secondary); } /* ~16px */
+        label { font-size: 0.875rem; font-weight: 500; color: var(--text-light); margin-bottom: 0.5rem; display: block; } /* ~14px */
+        span { font-size: 0.875rem; color: var(--text-secondary); } /* Default span */
+
+        /* --- Sidebar (Control Panel) --- */
+        .control-panel {
+            width: 300px;
+            padding: 1.5rem; /* 24px */
+            background-color: var(--sidebar-dark);
+            border-right: 1px solid var(--divider-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-icon {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .icon-thermometer {
+            font-size: 3rem; /* 48px */
+            background: linear-gradient(to bottom, red, orange, yellow);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-right: 0.5rem;
+        }
+
+        .icon-sun {
+            font-size: 2rem; /* 32px */
+            color: gold;
+        }
+
+        .section-title {
+            margin-top: 0;
+            margin-bottom: 1rem; /* 16px */
+            color: var(--text-light);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem; /* 24px */
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            appearance: none;
+            width: 1rem;
+            height: 1rem;
+            border: 1px solid var(--text-secondary);
+            border-radius: 4px;
+            background-color: var(--input-dark);
+            margin-right: 0.5rem;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .checkbox-group input[type="checkbox"]:checked {
+            background-color: var(--blue-accent);
+            border-color: var(--blue-accent);
+        }
+
+        .checkbox-group input[type="checkbox"]:checked::after {
+            content: '✔';
+            color: white;
+            font-size: 0.75rem;
+            line-height: 1;
+        }
+        .checkbox-group label {
+            margin-bottom: 0;
+            color: var(--text-light);
+            font-weight: 400;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid var(--divider-color);
+            margin: 0;
+            margin-bottom: 1.5rem; /* 24px */
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem; /* 24px */
+        }
+
+        .input-group select,
+        .input-group input[type="date"],
+        .input-group input[type="text"] {
+            width: calc(100% - 2rem); /* account for padding */
+            padding: 0.75rem 1rem; /* 12px 16px */
+            background-color: var(--input-dark);
+            border: none;
+            border-radius: 8px;
+            color: var(--text-light);
+            font-size: 1rem;
+            appearance: none; /* Remove default arrow for selects */
+            cursor: pointer;
+        }
+
+        .input-group select {
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a0a0a0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.7L146.2%20262.3%2018.8%2075.1a17.6%2017.6%200%200%200-25.3-24.5c-11.4%2011.6-11.4%2030.1%200%2041.8l136.2%20138.8a17.6%2017.6%200%200%200%2025.3%200l136.2-138.8c11.4-11.7%2011.4-30.2%200-41.8a17.6%2017.6%200%200%200-12.6-5.7z%22%2F%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 0.75rem;
+        }
+
+        .input-group input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1); /* Makes the calendar icon white */
+            cursor: pointer;
+        }
+
+        .pollutant-item {
+            margin-bottom: 1rem;
+        }
+        .pollutant-item p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+        .pollutant-value {
+            display: flex;
+            align-items: center;
+            margin-top: 0.25rem;
+        }
+        .pollutant-value span {
+            font-size: 1rem;
+            font-weight: 500;
+            margin-right: 0.75rem;
+        }
+        .pollutant-value .progress-bar {
+            flex-grow: 1;
+            height: 8px;
+            background-color: var(--input-dark);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .pollutant-value .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            width: 0%; /* Default */
+        }
+        .pollutant-value .progress-fill.red { background-color: var(--red-accent); }
+        .pollutant-value .progress-fill.orange { background-color: var(--orange-accent); }
+
+        .weather-info {
+            display: flex;
+            align-items: center;
+            margin-top: auto; /* Push to bottom */
+            padding-top: 1.5rem;
+        }
+        .weather-info .icon {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            margin-right: 0.5rem;
+        }
+        .weather-info span {
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
+        /* --- Main Dashboard Content --- */
+        .dashboard-content {
+            flex-grow: 1;
+            padding: 2rem; /* 32px */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dashboard-header {
+            margin-bottom: 2rem; /* 32px */
+        }
+        .dashboard-header h1 {
+            margin-bottom: 0.5rem;
+        }
+        .dashboard-status {
+            font-size: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .visuals-grid {
+            flex-grow: 1;
+            display: flex;
+            gap: 1.5rem; /* 24px */
+        }
+
+        .card {
+            background-color: var(--card-dark);
+            border-radius: 12px;
+            padding: 1.5rem; /* 24px */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .card-title {
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            color: var(--text-light);
+        }
+        .card-subtitle {
+            margin-top: -1rem; /* Adjust to sit closer to title */
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
+        }
+
+        /* --- Live Prediction Visual (Gauge Chart) --- */
+        .live-prediction {
+            flex: 5; /* Relative sizing */
+        }
+
+        .gauge-chart {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .gauge-meter-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 400px; /* Limit gauge size */
+            padding-bottom: 50%; /* Aspect ratio for semi-circle */
+            overflow: hidden;
+        }
+
+        .gauge-meter {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200%; /* Double width for semi-circle */
+            height: 200%; /* Double height for semi-circle */
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--green-accent) 0%,
+                var(--green-accent) 33.33%, /* 0-100 */
+                var(--orange-accent) 33.33%,
+                var(--orange-accent) 66.66%, /* 100-200 */
+                var(--red-accent) 66.66%,
+                var(--red-accent) 100% /* 200-300 */
+            );
+            transform: translate(-25%, -75%) rotate(-135deg); /* Position and rotate to show only top half */
+            mask: linear-gradient(to right, black, black) content-box,
+                  linear-gradient(to right, transparent, transparent) padding-box;
+            mask-composite: exclude;
+            border: 30px solid var(--card-dark); /* Simulate stroke width */
+            box-sizing: border-box;
+        }
+        /* A simpler approach to gauge using multiple divs */
+        .gauge-segments {
+            position: relative;
+            width: 300px; /* Adjust size as needed */
+            height: 150px;
+            border-radius: 150px 150px 0 0;
+            overflow: hidden;
+            transform: translateY(50%); /* To center the semi-circle visually */
+            margin-bottom: 2rem;
+        }
+
+        .gauge-segment {
+            position: absolute;
+            height: 100%;
+            bottom: 0;
+            transform-origin: bottom center;
+            box-sizing: border-box;
+            border: 20px solid transparent; /* Acts as the stroke width */
+            border-bottom: none;
+        }
+
+        .gauge-segment.green {
+            width: 100%; height: 200%; /* Makes it a full circle */
+            left: -50%;
+            background-color: var(--green-accent);
+            border-radius: 50%;
+            clip-path: polygon(0 50%, 50% 0%, 100% 50%); /* Simplified for visual, this needs tweaking */
+            transform: rotate(-120deg) translateX(0%) translateY(0%); /* Rotate segments */
+            transform-origin: 50% 100%;
+        }
+
+        /* The below is a more robust way to draw the gauge with divs/gradients,
+           but for simplicity, I'll use a static SVG or custom styling if required.
+           For this exercise, a visual approximation using a simple div structure
+           for the gauge with text overlays is often sufficient to demonstrate layout. */
+        .gauge-display {
+            position: relative;
+            width: 350px; /* Diameter */
+            height: 175px; /* Radius */
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .gauge-arc {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200%; /* Make it a full circle */
+            border-radius: 50%;
+            border: 25px solid var(--input-dark); /* Background stroke */
+            box-sizing: border-box;
+            clip-path: polygon(0% 50%, 100% 50%, 100% 100%, 0% 100%); /* Cut off top half */
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            transform: rotate(0deg); /* Reset rotation */
+            z-index: 1;
+        }
+
+        .gauge-inner-arc {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200%;
+            border-radius: 50%;
+            box-sizing: border-box;
+            background: conic-gradient(
+                var(--green-accent) 0deg,
+                var(--green-accent) 60deg, /* Roughly 0-100 out of 300 total (180 deg sweep) */
+                var(--orange-accent) 60deg,
+                var(--orange-accent) 120deg, /* Roughly 100-200 */
+                var(--red-accent) 120deg,
+                var(--red-accent) 180deg /* Roughly 200-300 */
+            );
+            transform: rotate(-90deg); /* Align gradient to start from left */
+            clip-path: polygon(0% 50%, 100% 50%, 100% 100%, 0% 100%); /* Cut off top half */
+            border: 25px solid transparent; /* Overlay to create segments */
+            border-color: var(--card-dark) var(--card-dark) transparent transparent; /* Simulate the gap */
+            z-index: 2;
+        }
+
+        .gauge-value {
+            position: absolute;
+            font-size: 4rem; /* 64px */
+            font-weight: 700;
+            color: var(--text-light);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+        }
+        .gauge-status {
+            position: absolute;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--orange-accent); /* Dynamic based on value */
+            top: calc(50% + 40px);
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+        }
+
+        .gauge-labels {
+            position: absolute;
+            width: 100%;
+            bottom: -1.5rem;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 1rem;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            z-index: 4;
+        }
+
+        .gauge-labels span:nth-child(2) { /* 100 */
+            position: absolute;
+            left: 25%;
+            transform: translateX(-50%);
+        }
+        .gauge-labels span:nth-child(3) { /* 200 */
+            position: absolute;
+            left: 75%;
+            transform: translateX(-50%);
+        }
+
+        .gauge-qualities {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .gauge-qualities span {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .gauge-qualities span:nth-child(1) { color: var(--green-accent); }
+        .gauge-qualities span:nth-child(2) { color: var(--orange-accent); }
+        .gauge-qualities span:nth-child(3) { color: var(--red-accent); }
+
+        /* --- Historical Trends (Line Chart) --- */
+        .historical-trends {
+            flex: 7; /* Relative sizing */
+        }
+
+        .line-chart {
+            flex-grow: 1;
+            position: relative;
+            padding-left: 3rem; /* Space for Y-axis labels */
+            padding-bottom: 1.5rem; /* Space for X-axis labels */
+        }
+
+        .chart-y-axis {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-right: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .chart-y-axis span {
+            height: 1rem; /* Adjust for line-height */
+            line-height: 1rem;
+        }
+
+        .chart-area {
+            position: absolute;
+            top: 0;
+            left: 3rem;
+            right: 0;
+            bottom: 0;
+            border-left: 1px solid var(--divider-color);
+            border-bottom: 1px solid var(--divider-color);
+        }
+
+        .chart-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(to right, var(--divider-color) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--divider-color) 1px, transparent 1px);
+            background-size: calc(100% / 10) calc(100% / 4); /* 10 vertical, 4 horizontal grid lines */
+            pointer-events: none;
+        }
+
+        .chart-line {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            /* This would typically be an SVG or Canvas element for actual drawing */
+            /* Placeholder for visual representation */
+            background: linear-gradient(
+                to right,
+                transparent 0%,
+                transparent 10%,
+                var(--blue-accent) 10%,
+                var(--blue-accent) 12%,
+                transparent 12%,
+                transparent 20%,
+                var(--blue-accent) 20%,
+                var(--blue-accent) 22%,
+                transparent 22%,
+                transparent 30%,
+                var(--blue-accent) 30%,
+                var(--blue-accent) 32%,
+                transparent 32%,
+                transparent 40%,
+                var(--blue-accent) 40%,
+                var(--blue-accent) 42%,
+                transparent 42%,
+                transparent 50%,
+                var(--blue-accent) 50%,
+                var(--blue-accent) 52%,
+                transparent 52%,
+                transparent 60%,
+                var(--blue-accent) 60%,
+                var(--blue-accent) 62%,
+                transparent 62%,
+                transparent 70%,
+                var(--blue-accent) 70%,
+                var(--blue-accent) 72%,
+                transparent 72%,
+                transparent 80%,
+                var(--blue-accent) 80%,
+                var(--blue-accent) 82%,
+                transparent 82%,
+                transparent 90%,
+                var(--blue-accent) 90%,
+                var(--blue-accent) 92%,
+                transparent 92%,
+                transparent 100%
+            );
+            background-size: 100% 2px; /* A thin line across */
+            background-position: 0% 70%; /* Position the line vertically */
+            mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 200"><path fill="none" stroke="%23007bff" stroke-width="4" d="M0 100 C 50 50, 150 150, 200 100 S 300 50, 400 100 S 550 180, 600 100 S 700 20, 800 100 S 900 150, 1000 100"/></svg>');
+            mask-repeat: no-repeat;
+            mask-size: 100% 100%;
+            mask-position: center;
+        }
+
+        /* SVG for the line chart with a more complex path */
+        .chart-line-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible; /* To allow line ends to show */
+        }
+        .chart-line-svg path {
+            fill: none;
+            stroke: var(--blue-accent);
+            stroke-width: 2;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Left Sidebar (Control Panel) -->
+        <aside class="control-panel">
+            <div class="header-icon">
+                <span class="icon-thermometer">🌡️</span>
+                <span class="icon-sun">☀️</span>
+            </div>
+            <h2 class="section-title">Control Panel</h2>
+            <div class="checkbox-group">
+                <input type="checkbox" id="adminMode">
+                <label for="adminMode">Enable Admin Mode</label>
+            </div>
+            <hr class="divider">
+
+            <div class="input-group">
+                <label for="citySelect">Select City for Analytics</label>
+                <select id="citySelect">
+                    <option value="ahmedabad">Ahmedabad</option>
+                    <option value="delhi">Delhi</option>
+                    <option value="mumbai">Mumbai</option>
+                    <option value="bangalore">Bangalore</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="dateSelect">Select Date</label>
+                <input type="date" id="dateSelect" value="2015-02-26">
+            </div>
+            <hr class="divider">
+
+            <h3 class="section-title">Live Pollutant Levels</h3>
+            <div class="pollutant-item">
+                <p>PM2.5 (Fine Particles)</p>
+                <div class="pollutant-value">
+                    <span style="color: var(--red-accent);">78.07</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill red" style="width: 78%;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="pollutant-item">
+                <p>PM10 (Dust)</p>
+                <div class="pollutant-value">
+                    <span style="color: var(--orange-accent);">120.50</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill orange" style="width: 40%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="weather-info">
+                <span class="icon">☁️</span>
+                <span>28°C Mostly cloudy</span>
+            </div>
+        </aside>
+
+        <!-- Right Main Content -->
+        <main class="dashboard-content">
+            <header class="dashboard-header">
+                <h1>AirAware: Smart Air Quality Analytics</h1>
+                <p class="dashboard-status">Dashboard Status: Active | Target City: Ahmedabad</p>
+            </header>
+
+            <section class="visuals-grid">
+                <!-- Live Prediction Visual Card (Gauge Chart) -->
+                <div class="card live-prediction">
+                    <h2 class="card-title">Live Prediction Visual</h2>
+                    <div class="gauge-chart">
+                        <div class="gauge-display">
+                            <svg class="gauge-arc" viewBox="0 0 400 200" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; overflow: visible;">
+                                <defs>
+                                    <linearGradient id="gaugeGradient" x1="0%" y1="100%" x2="100%" y2="100%">
+                                        <stop offset="0%" stop-color="var(--green-accent)" />
+                                        <stop offset="33%" stop-color="var(--green-accent)" />
+                                        <stop offset="33%" stop-color="var(--orange-accent)" />
+                                        <stop offset="66%" stop-color="var(--orange-accent)" />
+                                        <stop offset="66%" stop-color="var(--red-accent)" />
+                                        <stop offset="100%" stop-color="var(--red-accent)" />
+                                    </linearGradient>
+                                </defs>
+                                <!-- Background arc -->
+                                <path d="M 50 200 A 150 150 0 0 1 350 200"
+                                      fill="none" stroke="var(--input-dark)" stroke-width="25" stroke-linecap="round"/>
+                                <!-- Colored arc -->
+                                <path d="M 50 200 A 150 150 0 0 1 350 200"
+                                      fill="none" stroke="url(#gaugeGradient)" stroke-width="25" stroke-linecap="round"/>
+                                <!-- Indicator line - could be dynamic based on value -->
+                                <!-- Example: <path d="M 200 200 L 200 100" stroke="white" stroke-width="4"/> -->
+                            </svg>
+                            <div class="gauge-value">105</div>
+                            <div class="gauge-status">MODERATE</div>
+                            <div class="gauge-labels" style="width: calc(100% - 100px); left: 50px;">
+                                <span>0</span>
+                                <span style="position: absolute; left: 33%;">100</span>
+                                <span style="position: absolute; left: 66%;">200</span>
+                                <span>300</span>
+                            </div>
+                        </div>
+                        <div class="gauge-qualities">
+                            <span>Good</span>
+                            <span>Moderate</span>
+                            <span>Poor</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historical Trends Card (Line Chart) -->
+                <div class="card historical-trends">
+                    <h2 class="card-title">Historical Trends: Ahmedabad</h2>
+                    <p class="card-subtitle">PM2.5 Levels over the last year</p>
+                    <div class="line-chart">
+                        <div class="chart-y-axis">
+                            <span>200</span>
+                            <span>150</span>
+                            <span>100</span>
+                            <span>50</span>
+                            <span>0</span>
+                        </div>
+                        <div class="chart-area">
+                            <div class="chart-grid"></div>
+                            <!-- A simple SVG for the line chart to show the shape -->
+                            <svg class="chart-line-svg" viewBox="0 0 1000 200">
+                                <!-- Define the path for a fluctuating line -->
+                                <path d="M0 150 C 50 120, 100 80, 150 100 S 250 180, 300 120 S 400 60, 450 100 S 550 160, 600 100 S 700 40, 750 80 S 850 130, 900 70 S 950 110, 1000 90"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

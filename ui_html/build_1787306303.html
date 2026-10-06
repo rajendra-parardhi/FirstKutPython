@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Location Picker Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Aspect Ratio Container mapping back to 276:605 */
+    .device-canvas {
+      width: 100%;
+      max-width: 360px;
+      aspect-ratio: 276 / 605;
+      position: relative;
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+      background-color: #dde2e7;
+    }
+
+    /* Helper conversions from absolute [0..276] and [0..605] to percentage */
+    .layer-1 {
+      left: 0%;
+      top: 0%;
+      width: 99.6%;
+      height: 99.6%;
+      background-color: #dde2e7;
+    }
+    .layer-2 {
+      left: 0%;
+      top: 0%;
+      width: 58.3%;
+      height: 99.6%;
+      background-color: #dae1e7;
+    }
+    .layer-4 {
+      left: 29.3%;
+      top: 20.8%;
+      width: 58%;
+      height: 60.8%;
+      background-color: #e4e4dc;
+      border-radius: 12px;
+    }
+    .layer-5 {
+      left: 0.36%;
+      top: 0%;
+      width: 98.5%;
+      height: 20.1%;
+      background-color: #f6f7f8;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    }
+    .layer-6 {
+      left: 0.36%;
+      top: 20.8%;
+      width: 29.3%;
+      height: 2.48%;
+      background-color: #eaebee;
+    }
+    .layer-8 {
+      left: 14.5%;
+      top: 40.5%;
+      width: 37%;
+      height: 19.7%;
+      background-color: rgba(204, 224, 212, 0.9);
+      border: 2px solid #a2c7b1;
+      border-radius: 16px;
+    }
+    .layer-3 {
+      left: 0.36%;
+      top: 81.8%;
+      width: 98.5%;
+      height: 17.8%;
+      background-color: #aabfe1;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+    }
+    .layer-9 {
+      left: 2.5%;
+      top: 84%;
+      width: 9.8%;
+      height: 4.46%;
+      background-color: #e1eaf9;
+      border-radius: 4px;
+    }
+    .layer-12 {
+      left: 15.6%;
+      top: 86.3%;
+      width: 13%;
+      height: 1.3%;
+      background-color: #bdbebf;
+      border-radius: 2px;
+    }
+    .layer-13 {
+      left: 31.9%;
+      top: 86.1%;
+      width: 16.7%;
+      height: 1.49%;
+      background-color: #c5c5c6;
+      border-radius: 2px;
+    }
+    .layer-10 {
+      left: 50%;
+      top: 86.3%;
+      width: 10.9%;
+      height: 1.16%;
+      background-color: #c2c3c4;
+      border-radius: 2px;
+    }
+    .layer-11 {
+      left: 63.8%;
+      top: 86.3%;
+      width: 17%;
+      height: 1.49%;
+      background-color: #bbbcbd;
+      border-radius: 2px;
+    }
+    .layer-0 {
+      left: 2.5%;
+      top: 91.7%;
+      width: 93.1%;
+      height: 5.95%;
+      background-color: #1655ba;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 flex items-center justify-center min-h-screen p-4 font-sans text-slate-800">
+
+  <div class="device-canvas relative">
+    
+    <!-- Background Canvas Layer 1 (ID 1) -->
+    <div class="absolute layer-1"></div>
+
+    <!-- Background Canvas Layer 2 (ID 2) -->
+    <div class="absolute layer-2"></div>
+
+    <!-- Map Visual Area (ID 4) -->
+    <div class="absolute layer-4 shadow-inner flex items-center justify-center">
+      <span class="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Map Plot</span>
+    </div>
+
+    <!-- Minor Highlight Indicator Overlay (ID 6) -->
+    <div class="absolute layer-6"></div>
+
+    <!-- Interactive Location Pin Wrapper (ID 8) -->
+    <div class="absolute layer-8 flex flex-col items-center justify-center gap-1 shadow-md animate-pulse">
+      <svg class="w-8 h-8 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+      </svg>
+      <span class="text-[8px] text-green-900 font-bold uppercase">Pin Active</span>
+    </div>
+
+    <!-- Search/Pickup Header Panel (ID 5) -->
+    <div class="absolute layer-5 p-3 flex flex-col justify-between">
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path>
+        </svg>
+        <h1 class="text-xs font-bold text-gray-900">Set Pickup Location</h1>
+      </div>
+      <div class="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2.5 flex items-center gap-1.5 shadow-sm">
+        <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <span class="text-[10px] text-gray-500 font-medium">Search location...</span>
+      </div>
+    </div>
+
+    <!-- Selected Location Info Card Base (ID 3) -->
+    <div class="absolute layer-3 px-3 py-2 flex flex-col justify-start">
+      <span class="text-[8px] font-extrabold text-blue-900 tracking-wider mb-1">SELECTED LOCATION</span>
+      <p class="text-[10px] text-slate-900 font-semibold leading-snug line-clamp-2 pr-4 pl-8">
+        47333A Block 7 Kukatpally Main Junction Hyderabad
+      </p>
+    </div>
+
+    <!-- Location Marker Icon Container (ID 9) -->
+    <div class="absolute layer-9 flex items-center justify-center">
+      <svg class="w-3.5 h-3.5 text-blue-700" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+      </svg>
+    </div>
+
+    <!-- Action / Progress Indicators Row (IDs 12, 13, 10, 11) -->
+    <div class="absolute layer-12"></div>
+    <div class="absolute layer-13"></div>
+    <div class="absolute layer-10"></div>
+    <div class="absolute layer-11"></div>
+
+    <!-- Confirm Button Layer (ID 0) -->
+    <button class="absolute layer-0 flex items-center justify-center text-white text-[11px] font-bold tracking-wide shadow-lg hover:bg-blue-700 active:scale-95 transition-all duration-150">
+      Confirm Location
+    </button>
+
+  </div>
+
+</body>
+</html>

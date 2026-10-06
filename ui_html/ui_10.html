@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Form</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #3186ec; /* Blue for header */
+            --button-blue: #2780ec;  /* Blue for login button */
+            --input-bg: #f0f0f1;     /* Light grey for input fields */
+            --placeholder-color: #a0a0a0;
+            --page-bg: #f0f2f5;      /* Light background, similar to #eef1f6 */
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--page-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-color);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .login-card {
+            background-color: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px; /* Internal padding for the card */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 369px; /* Card width, to contain 309px elements with 30px padding on each side (309 + 2*30 = 369) */
+            max-width: 90%; /* Responsive adjustment */
+            box-sizing: border-box; /* Include padding in width calculation */
+        }
+
+        .logo-container {
+            background-color: var(--primary-blue);
+            width: 309px; /* From JSON bbox */
+            height: 156px; /* From JSON bbox */
+            border-radius: 15px; /* Slightly less than card radius for visual distinction */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 30px; /* Space before first input field */
+            box-sizing: border-box;
+        }
+
+        .logo-container i {
+            color: white;
+            font-size: 80px; /* Large user icon */
+        }
+
+        .input-group {
+            width: 309px; /* From JSON bbox */
+            margin-bottom: 20px; /* Space between input fields */
+            position: relative; /* For eye icon positioning */
+            box-sizing: border-box;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            background-color: var(--input-bg);
+            border-radius: 12px; /* Rounded corners for input fields */
+            font-size: 16px;
+            color: var(--text-color);
+            outline: none; /* Remove focus outline */
+            box-sizing: border-box;
+            height: 58px; /* From JSON bbox */
+        }
+
+        .input-group input::placeholder {
+            color: var(--placeholder-color);
+        }
+
+        .password-field i {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--placeholder-color);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .login-button {
+            width: 309px; /* From JSON bbox */
+            height: 66px; /* From JSON bbox */
+            background-color: var(--button-blue);
+            color: white;
+            border: none;
+            border-radius: 16px; /* Rounded corners for button */
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 10px; /* Space between last input and button */
+            box-sizing: border-box;
+        }
+
+        .login-button:hover {
+            background-color: #1a6ac2; /* Slightly darker blue on hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="logo-container">
+            <i class="fas fa-user"></i>
+        </div>
+        <div class="input-group">
+            <input type="text" placeholder="Enter username">
+        </div>
+        <div class="input-group password-field">
+            <input type="password" placeholder="Enter password">
+            <i class="fas fa-eye"></i>
+        </div>
+        <button class="login-button">Login</button>
+    </div>
+</body>
+</html>

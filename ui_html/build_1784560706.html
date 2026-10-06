@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login UI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #3b8dea; /* From DesignIR */
+            --input-bg: #f3f3f3;    /* From DesignIR */
+            --text-placeholder: #a0a0a0;
+            --text-dark: #333;
+            --card-bg: #ffffff;
+            --screen-bg: #f9f9f9;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: var(--screen-bg);
+            color: var(--text-dark);
+        }
+
+        .login-card {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            width: 350px;
+            max-width: 90%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 25px; /* Spacing between elements */
+        }
+
+        .profile-icon-container {
+            background-color: var(--primary-blue);
+            width: 150px;
+            height: 100px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto; /* Center the icon container */
+        }
+
+        .profile-icon {
+            color: #fff;
+            font-size: 50px;
+        }
+
+        .input-group {
+            position: relative;
+            width: 100%;
+        }
+
+        .input-field {
+            width: calc(100% - 40px); /* Account for padding */
+            padding: 15px 20px;
+            border: none;
+            background-color: var(--input-bg);
+            border-radius: 10px;
+            font-size: 16px;
+            color: var(--text-dark);
+            outline: none;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .input-field:focus {
+            background-color: #e0e0e0;
+            box-shadow: 0 0 0 2px var(--primary-blue);
+        }
+
+        .input-field::placeholder {
+            color: var(--text-placeholder);
+        }
+
+        .password-toggle-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-placeholder);
+            font-size: 18px;
+        }
+
+        .login-button {
+            background-color: var(--primary-blue);
+            color: #fff;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            width: 100%;
+            outline: none;
+        }
+
+        .login-button:hover {
+            background-color: #2a7bd8; /* Slightly darker blue on hover */
+            transform: translateY(-2px);
+        }
+
+        .login-button:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="profile-icon-container">
+            <i class="fas fa-user profile-icon"></i>
+        </div>
+
+        <div class="input-group">
+            <input type="text" class="input-field" placeholder="Enter username">
+        </div>
+
+        <div class="input-group">
+            <input type="password" class="input-field" placeholder="Enter password" id="passwordField">
+            <i class="fas fa-eye password-toggle-icon" id="togglePassword"></i>
+        </div>
+
+        <button class="login-button">Login</button>
+    </div>
+
+    <script>
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordField = document.getElementById('passwordField');
+
+        togglePassword.addEventListener('click', function() {
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
+        });
+    </script>
+</body>
+</html>
+---

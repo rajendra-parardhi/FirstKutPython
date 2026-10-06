@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commute Setup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #f9f9fa;
+      --card-bg: #fafafa;
+      --primary: #3263ae;
+      --light-blue: #bdcfeb;
+      --gray-1: #d1d2d3;
+      --gray-2: #cececf;
+      --gray-3: #c3c4c5;
+      --gray-4: #8f9092;
+      --slate-900: #0f172a;
+      --slate-700: #334155;
+      --slate-400: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: var(--slate-900);
+      overflow: hidden;
+    }
+
+    /* Standard responsive mobile frame */
+    .phone-container {
+      position: relative;
+      width: 100%;
+      max-width: 410px;
+      height: 100vh;
+      max-height: 840px;
+      background-color: var(--bg-color);
+      border-radius: 40px;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      border: 8px solid #1e293b;
+    }
+
+    /* Abstract Route Map (Normalized scale based on DesignIR coordinate maps) */
+    .route-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .node {
+      position: absolute;
+      border-radius: 99px;
+    }
+
+    .node-8 {
+      left: 5%;
+      top: 55%;
+      width: 14px;
+      height: 14px;
+      background-color: var(--light-blue);
+    }
+
+    .node-4 {
+      left: 12%;
+      top: 55.5%;
+      width: 80px;
+      height: 11px;
+      background-color: var(--gray-1);
+    }
+
+    .node-6 {
+      left: 36%;
+      top: 48%;
+      width: 20px;
+      height: 11px;
+      background-color: var(--gray-3);
+    }
+
+    .node-7 {
+      left: 38%;
+      top: 42%;
+      width: 10px;
+      height: 18px;
+      background-color: var(--gray-4);
+    }
+
+    .node-5 {
+      left: 52%;
+      top: 55.5%;
+      width: 45px;
+      height: 11px;
+      background-color: var(--gray-2);
+    }
+
+    .node-2 {
+      left: 72%;
+      top: 25%;
+      width: 80px;
+      height: 11px;
+      background-color: var(--primary);
+    }
+
+    /* Content Area */
+    .header-section {
+      position: relative;
+      z-index: 2;
+      padding: 48px 28px 0 28px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      background-color: rgba(50, 99, 174, 0.1);
+      color: var(--primary);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.8px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: var(--slate-900);
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: var(--slate-700);
+      line-height: 1.4;
+    }
+
+    /* Interactive Details Sheet (ID 3) */
+    .details-sheet {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: var(--card-bg);
+      border-radius: 30px 30px 0 0;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.03);
+      z-index: 10;
+      padding-bottom: 24px;
+    }
+
+    .drag-handle {
+      width: 40px;
+      height: 5px;
+      background-color: #e2e8f0;
+      border-radius: 3px;
+      margin: 12px auto 20px auto;
+    }
+
+    .sheet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px 16px 24px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-office {
+      width: 20px;
+      height: 20px;
+      fill: var(--primary);
+    }
+
+    .sheet-header h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--slate-900);
+    }
+
+    .time-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--slate-400);
+    }
+
+    .options-list {
+      padding: 12px 24px;
+    }
+
+    .option-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+    }
+
+    .option-label {
+      font-size: 14.5px;
+      font-weight: 500;
+      color: var(--slate-700);
+    }
+
+    /* Premium Toggle Switch Style */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e1;
+      transition: .3s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    .btn-action {
+      display: block;
+      width: calc(100% - 48px);
+      margin: 16px auto 12px auto;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: background-color 0.2s;
+    }
+
+    .btn-action:hover {
+      background-color: #254d8c;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        background-color: var(--bg-color);
+      }
+      .phone-container {
+        max-width: 100vw;
+        height: 100vh;
+        max-height: 100vh;
+        border: none;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="phone-container">
+    <!-- Stylized Background Map -->
+    <div class="route-canvas">
+      <div class="node node-8"></div>
+      <div class="node node-4"></div>
+      <div class="node node-6"></div>
+      <div class="node node-7"></div>
+      <div class="node node-5"></div>
+      <div class="node node-2"></div>
+    </div>
+
+    <!-- Top Info Screen -->
+    <div class="header-section">
+      <div class="status-badge">ACTIVE</div>
+      <h1>All Set</h1>
+      <div class="subtitle">Your smart office commute rules are configured.</div>
+    </div>
+
+    <!-- Bottom Actions Drawer -->
+    <div class="details-sheet">
+      <div class="drag-handle"></div>
+      
+      <div class="sheet-header">
+        <div class="title-group">
+          <svg class="icon-office" viewBox="0 0 24 24">
+            <path d="M12 7V3H2v18h20V7H12zm-2 12H4v-2h6v2zm0-4H4v-2h6v2zm0-4H4V9h6v2zm0-4H4V5h6v2zm10 12h-8v-2h8v2zm0-4h-8v-2h8v2zm0-4h-8V9h8v2z"/>
+          </svg>
+          <h2>Office</h2>
+        </div>
+        <div class="time-label">9:41 AM</div>
+      </div>
+
+      <div class="options-list">
+        <!-- Option 1 -->
+        <div class="option-row">
+          <div class="option-label">Auto pickup for login rides</div>
+          <label class="switch">
+            <input type="checkbox" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Option 2 -->
+        <div class="option-row">
+          <div class="option-label">Easy request for logout rides</div>
+          <label class="switch">
+            <input type="checkbox" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Option 3 -->
+        <div class="option-row">
+          <div class="option-label">Company-managed billing</div>
+          <label class="switch">
+            <input type="checkbox" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <button class="btn-action">View Active Trips</button>
+    </div>
+  </div>
+
+</body>
+</html>

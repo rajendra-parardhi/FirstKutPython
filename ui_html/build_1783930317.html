@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Components Grid</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --bg-color-outer: #f0effe; /* Light purple/grey from JSON */
+            --card-bg-color: #ffffff;
+            --card-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            --text-color-dark: #333333;
+            --text-color-medium: #555555;
+            --text-color-light: #757575;
+            --border-color-light: #e0e0e0;
+
+            /* Component specific colors */
+            --color-teal: #aedcdc; /* Container */
+            --color-pink: #f48b96; /* Row & Column */
+            --color-purple: #9478f1; /* Row & Column */
+            --color-orange: #f9b76a; /* Row & Column, Stack Badge */
+            --color-yellow: #fcd035; /* Row & Column Star, Image Sun */
+            --color-light-blue-stack: #e1e8ef; /* Stack background */
+            --color-red: #ef5350; /* Expanded 1x */
+            --color-green: #66bb6a; /* Expanded 2x, Image Mountains */
+            --color-sky-blue: #e8f6ff; /* Image Sky */
+            --color-blue-grid: #42a5f5;
+            --color-brown-grid: #8d6e63;
+            --color-deep-purple-grid: #ab47bc;
+            --color-grey-blue-grid: #78909c;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--bg-color-outer);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top */
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            max-width: 900px; /* Max width to match a typical mobile app layout */
+            width: 100%;
+        }
+
+        .card {
+            background-color: var(--card-bg-color);
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-height: 180px; /* Ensure cards have some uniform height */
+            box-sizing: border-box;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-color-dark);
+            margin-bottom: 10px;
+        }
+
+        .card-content {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        /* --- Component Specific Styles --- */
+
+        /* Container */
+        .container-box {
+            width: 80px;
+            height: 60px;
+            background-color: var(--color-teal);
+            border-radius: 8px;
+        }
+
+        /* Row & Column */
+        .row-col-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .row-col-shapes {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .row-col-shapes > div {
+            width: 25px;
+            height: 25px;
+        }
+        .row-col-shapes .circle {
+            background-color: var(--color-pink);
+            border-radius: 50%;
+        }
+        .row-col-shapes .square-purple {
+            background-color: var(--color-purple);
+            border-radius: 4px;
+        }
+        .row-col-shapes .square-orange {
+            background-color: var(--color-orange);
+            border-radius: 4px;
+        }
+        .row-col-content .fa-star {
+            color: var(--color-yellow);
+            font-size: 30px;
+        }
+
+        /* Stack */
+        .stack-content {
+            position: relative;
+            width: 100px;
+            height: 80px;
+            background-color: var(--color-light-blue-stack);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .stack-content .fa-camera {
+            color: white;
+            font-size: 40px;
+        }
+        .stack-badge {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background-color: var(--color-orange);
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        /* Expanded & Flexible */
+        .expanded-flexible-content {
+            display: flex;
+            width: 100%;
+            gap: 10px;
+        }
+        .expanded-flexible-box {
+            height: 50px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+        }
+        .expanded-flexible-box.one-x {
+            flex: 1;
+            background-color: var(--color-red);
+        }
+        .expanded-flexible-box.two-x {
+            flex: 2;
+            background-color: var(--color-green);
+        }
+
+        /* Image.asset */
+        .image-asset-content {
+            position: relative;
+            width: 100px;
+            height: 80px;
+            background-color: var(--color-sky-blue);
+            border-radius: 8px;
+            overflow: hidden; /* For the mountains */
+        }
+        .image-asset-sun {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 25px;
+            height: 25px;
+            background-color: var(--color-yellow);
+            border-radius: 50%;
+        }
+        .image-asset-mountains {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-color: var(--color-green);
+            clip-path: polygon(0 70%, 30% 30%, 60% 80%, 100% 40%, 100% 100%, 0 100%);
+        }
+
+        /* ListView */
+        .list-view-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .list-item-line {
+            width: 80px;
+            height: 8px;
+            background-color: var(--border-color-light);
+            border-radius: 2px;
+        }
+
+        /* GridView */
+        .grid-view-content {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            width: 90px; /* Control size of the inner grid */
+            height: 90px;
+        }
+        .grid-view-item {
+            border-radius: 4px;
+        }
+        /* Specific grid colors */
+        .grid-view-item:nth-child(1) { background-color: var(--color-red); }
+        .grid-view-item:nth-child(2) { background-color: var(--color-green); }
+        .grid-view-item:nth-child(3) { background-color: var(--color-orange); }
+        .grid-view-item:nth-child(4) { background-color: var(--color-blue-grid); }
+        .grid-view-item:nth-child(5) { background-color: var(--color-purple); }
+        .grid-view-item:nth-child(6) { background-color: var(--color-brown-grid); }
+        .grid-view-item:nth-child(7) { background-color: var(--color-deep-purple-grid); }
+        .grid-view-item:nth-child(8) { background-color: var(--color-grey-blue-grid); }
+        .grid-view-item:nth-child(9) { background-color: var(--color-pink); }
+
+
+        /* User Profile Card */
+        .user-profile-content .fa-person-outline {
+            font-size: 40px;
+            color: var(--text-color-light);
+            margin-bottom: 8px;
+        }
+        .user-profile-content .name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-color-dark);
+            margin-bottom: 4px;
+        }
+        .user-profile-content .email {
+            font-size: 10px;
+            color: var(--text-color-light);
+        }
+
+        /* Scrollable Column 1 */
+        .scroll-col-content h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-color-dark);
+            margin: 0 0 8px 0;
+            text-align: left; /* Override card center alignment for this content */
+            width: 100%;
+        }
+        .scroll-col-content .row-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 12px;
+            color: var(--text-color-medium);
+        }
+
+        /* Placeholder Card */
+        .placeholder-card-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .placeholder-line {
+            height: 8px;
+            background-color: var(--border-color-light);
+            border-radius: 2px;
+        }
+        .placeholder-line.short { width: 60px; }
+        .placeholder-line.medium { width: 90px; }
+        .placeholder-line.long { width: 70px; } /* Adjust to match image visual */
+
+        /* Divider & Spacer */
+        .divider-spacer-content {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .divider-line {
+            height: 1px;
+            width: 80px;
+            background-color: var(--border-color-light);
+        }
+
+        /* Scrollable Column 2 */
+        .scroll-col-2-content h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-color-dark);
+            margin: 0 0 8px 0;
+            text-align: left;
+            width: 100%;
+        }
+        .scroll-col-2-content p {
+            font-size: 12px;
+            color: var(--text-color-medium);
+            margin: 0;
+            text-align: left;
+            width: 100%;
+            max-height: 50px; /* Imply scrollability, similar to maxLines in Flutter */
+            overflow: hidden; /* for ellipsis, though full support needs more CSS */
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 3; /* Limit to 3 lines */
+            -webkit-box-orient: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-container">
+        <!-- Container Card -->
+        <div class="card">
+            <h3 class="card-title">Container</h3>
+            <div class="card-content">
+                <div class="container-box"></div>
+            </div>
+        </div>
+
+        <!-- Row & Column Card -->
+        <div class="card">
+            <h3 class="card-title">Row & Column</h3>
+            <div class="card-content">
+                <div class="row-col-content">
+                    <div class="row-col-shapes">
+                        <div class="circle"></div>
+                        <div class="square-purple"></div>
+                        <div class="square-orange"></div>
+                    </div>
+                    <i class="fas fa-star"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stack Card -->
+        <div class="card">
+            <h3 class="card-title">Stack</h3>
+            <div class="card-content">
+                <div class="stack-content">
+                    <i class="fas fa-camera"></i>
+                    <div class="stack-badge">Badge</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expanded & Flexible Card -->
+        <div class="card">
+            <h3 class="card-title">Expanded & Flexible</h3>
+            <div class="card-content">
+                <div class="expanded-flexible-content">
+                    <div class="expanded-flexible-box one-x">1x</div>
+                    <div class="expanded-flexible-box two-x">2x</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image.asset Card -->
+        <div class="card">
+            <h3 class="card-title">Image.asset</h3>
+            <div class="card-content">
+                <div class="image-asset-content">
+                    <div class="image-asset-sun"></div>
+                    <div class="image-asset-mountains"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ListView Card -->
+        <div class="card">
+            <h3 class="card-title">ListView</h3>
+            <div class="card-content">
+                <div class="list-view-content">
+                    <div class="list-item-line"></div>
+                    <div class="list-item-line"></div>
+                    <div class="list-item-line"></div>
+                    <div class="list-item-line"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GridView Card -->
+        <div class="card">
+            <h3 class="card-title">GridView</h3>
+            <div class="card-content">
+                <div class="grid-view-content">
+                    <div class="grid-view-item"></div>
+                    <div class="grid-view-item"></div>
+                    <div class="grid-view-item"></div>
+                    <div class="grid-view-item"></div>
+                    <div class="grid-view-item"></div>
+                    <div class="grid-view-item"></div>
+                    <div class="grid-view-item"></div>
+                    <div class="grid-view-item"></div>
+                    <div class="grid-view-item"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card (User Profile) -->
+        <div class="card">
+            <h3 class="card-title">Card</h3>
+            <div class="card-content user-profile-content">
+                <i class="far fa-person-outline"></i> <!-- Using far for outline icon -->
+                <div class="name">John Doe</div>
+                <div class="email">john-doe@eamik.com</div>
+            </div>
+        </div>
+
+        <!-- Scrollable Column 1 Card (Corrected typo from "Scrirollabe") -->
+        <div class="card">
+            <h3 class="card-title">Scrollable Column</h3>
+            <div class="card-content scroll-col-content">
+                <h4>Heading</h4>
+                <div class="row-labels">
+                    <span>Left</span>
+                    <span>Right</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card (Placeholder) -->
+        <div class="card">
+            <h3 class="card-title">Card</h3>
+            <div class="card-content placeholder-card-content">
+                <div class="placeholder-line short"></div>
+                <div class="placeholder-line medium"></div>
+                <div class="placeholder-line long"></div>
+            </div>
+        </div>
+
+        <!-- Divider & Spacer Card -->
+        <div class="card">
+            <h3 class="card-title">Divider & Spacer</h3>
+            <div class="card-content divider-spacer-content">
+                <div class="divider-line"></div>
+                <div class="divider-line"></div>
+                <div class="divider-line"></div>
+            </div>
+        </div>
+
+        <!-- Scrollable Column 2 Card -->
+        <div class="card">
+            <h3 class="card-title">Scrollable Column</h3>
+            <div class="card-content scroll-col-2-content">
+                <h4>Heading</h4>
+                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

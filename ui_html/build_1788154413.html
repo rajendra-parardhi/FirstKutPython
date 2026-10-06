@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigation Search</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts & Material Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f1f2f5;
+        }
+        .map-bg {
+            background-image: radial-gradient(circle, #e2e8f0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .search-card-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- Responsive Phone Frame Wrapper -->
+    <div class="relative w-full max-w-[412px] h-[846px] bg-[#f7f7f8] rounded-[48px] shadow-2xl border-8 border-slate-800 overflow-hidden flex flex-col justify-between">
+        
+        <!-- Status Bar -->
+        <div class="w-full px-6 pt-4 pb-2 flex justify-between items-center text-slate-800 font-semibold text-xs z-10 bg-[#f7f7f8]/90 backdrop-blur-sm">
+            <span>9:41</span>
+            <div class="flex items-center gap-1.5">
+                <span class="material-icons-round text-sm">signal_cellular_alt</span>
+                <span class="material-icons-round text-sm">wifi</span>
+                <span class="material-icons-round text-sm">battery_full</span>
+            </div>
+        </div>
+
+        <!-- Scrollable Body with Map Backdrop -->
+        <div class="flex-1 overflow-y-auto relative map-bg px-4 flex flex-col gap-4">
+            
+            <!-- Map road overlay lines simulation -->
+            <div class="absolute inset-0 opacity-10 pointer-events-none">
+                <svg width="100%" height="100%">
+                    <line x1="0" y1="20%" x2="100%" y2="35%" stroke="#000" stroke-width="2"/>
+                    <line x1="0" y1="70%" x2="100%" y2="60%" stroke="#000" stroke-width="2"/>
+                    <line x1="30%" y1="0" x2="45%" y2="100%" stroke="#000" stroke-width="2"/>
+                    <line x1="80%" y1="0" x2="65%" y2="100%" stroke="#000" stroke-width="2"/>
+                </svg>
+            </div>
+
+            <!-- Destination Card Overlay (id: 1, 13) -->
+            <div class="bg-white rounded-3xl p-4 search-card-shadow relative z-10 mt-2">
+                <div class="bg-[#f1f2f5] rounded-2xl p-4 flex flex-col gap-3">
+                    <!-- Current Location Row -->
+                    <div class="flex items-center gap-3">
+                        <div class="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-100"></div>
+                        <div class="flex-1 text-sm font-medium text-slate-800">Current Location</div>
+                    </div>
+                    <!-- Connection Line -->
+                    <div class="w-0.5 h-6 bg-slate-300 ml-1"></div>
+                    <!-- Destination Row -->
+                    <div class="flex items-center gap-3">
+                        <span class="material-icons-round text-red-500 text-base">location_on</span>
+                        <div class="flex-1 text-sm text-slate-400 font-medium">Enter destination</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Action Pills (id: 4, 5, 14, 16) -->
+            <div class="flex gap-3 relative z-10">
+                <!-- Action 1: Locate on Map -->
+                <button class="flex-1 bg-[#e1eaf9] hover:bg-[#d0e0f7] transition-all text-[#3a82f6] py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold">
+                    <span class="material-icons-round text-base">map</span>
+                    Locate on Map
+                </button>
+                <!-- Action 2: Current Location -->
+                <button class="flex-1 bg-[#dfe9f9] hover:bg-[#cee0f8] transition-all text-[#2563eb] py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold">
+                    <span class="material-icons-round text-base">my_location</span>
+                    Current Loc.
+                </button>
+            </div>
+
+            <!-- Saved Addresses Section Header (id: 13 list content header) -->
+            <div class="mt-4 flex items-center justify-between text-slate-500 font-bold text-[11px] tracking-wider relative z-10">
+                <span>SAVED ADDRESSES</span>
+                <span class="material-icons-round text-base cursor-pointer">keyboard_arrow_down</span>
+            </div>
+
+            <!-- Saved Addresses List (id: 6, 7, 8, 9, 10, 11, 12, 15, 17) -->
+            <div class="flex flex-col gap-3 relative z-10">
+                
+                <!-- Home Address Card -->
+                <div class="bg-white hover:bg-slate-50 cursor-pointer transition-all p-3.5 rounded-2xl flex items-center justify-between border border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[#ebedef] flex items-center justify-center text-slate-600">
+                            <span class="material-icons-round text-lg">home</span>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold text-slate-800">Home</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">Secunderabad, Hyderabad, 5th Block</div>
+                        </div>
+                    </div>
+                    <div class="bg-[#f1f2f5] text-slate-500 px-2 py-1 rounded-lg text-[10px] font-bold shrink-0">
+                        4.7 Km
+                    </div>
+                </div>
+
+                <!-- Work Address Card -->
+                <div class="bg-white hover:bg-slate-50 cursor-pointer transition-all p-3.5 rounded-2xl flex items-center justify-between border border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[#eaecee] flex items-center justify-center text-slate-600">
+                            <span class="material-icons-round text-lg">work</span>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold text-slate-800">Work</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">Tech Mahindra Office, Kukatpally, Hyd</div>
+                        </div>
+                    </div>
+                    <div class="bg-[#f1f2f5] text-slate-500 px-2 py-1 rounded-lg text-[10px] font-bold shrink-0">
+                        8.5 Km
+                    </div>
+                </div>
+
+                <!-- Friends Address Card -->
+                <div class="bg-white hover:bg-slate-50 cursor-pointer transition-all p-3.5 rounded-2xl flex items-center justify-between border border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[#ecedef] flex items-center justify-center text-slate-600">
+                            <span class="material-icons-round text-lg">people</span>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold text-slate-800">Friends</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">Pista House Door No 47, Kukatpally</div>
+                        </div>
+                    </div>
+                    <div class="bg-[#f1f2f5] text-slate-500 px-2 py-1 rounded-lg text-[10px] font-bold shrink-0">
+                        12 Km
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Bottom Navigation Bar (id: 2) -->
+        <div class="mx-4 mb-4 bg-white rounded-[28px] h-[64px] flex items-center justify-around px-4 shadow-lg border border-slate-100/50 z-10">
+            <button class="text-blue-500 flex flex-col items-center gap-0.5">
+                <span class="material-icons-round text-xl">explore</span>
+            </button>
+            <button class="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-0.5 transition-all">
+                <span class="material-icons-round text-xl">bookmark_outline</span>
+            </button>
+            <button class="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-0.5 transition-all">
+                <span class="material-icons-round text-xl">history</span>
+            </button>
+            <button class="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-0.5 transition-all">
+                <span class="material-icons-round text-xl">person_outline</span>
+            </button>
+        </div>
+
+    </div>
+
+</body>
+</html>

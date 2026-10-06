@@ -1,0 +1,148 @@
+{
+  "elements": [
+    {
+      "text": [
+        "1. Upload PDF",
+        "PDF",
+        "2. Extract Text from PD",
+        "=",
+        "3. Convert to JSON",
+        "4. Process Query",
+        "Ask Questions",
+        "6. Generate Answer",
+        "7. Export Results",
+        "JSON",
+        "PDF",
+        "Display",
+        "on Web"
+      ],
+      "color": "#d8d7cf",
+      "bbox": [
+        3,
+        0,
+        1018,
+        1535
+      ]
+    },
+    {
+      "text": [],
+      "color": "#eba84c",
+      "bbox": [
+        281,
+        874,
+        461,
+        241
+      ]
+    },
+    {
+      "text": [],
+      "color": "#5492ce",
+      "bbox": [
+        281,
+        47,
+        461,
+        222
+      ]
+    },
+    {
+      "text": [],
+      "color": "#62b6a6",
+      "bbox": [
+        280,
+        330,
+        463,
+        221
+      ]
+    },
+    {
+      "text": [],
+      "color": "#77a86a",
+      "bbox": [
+        281,
+        610,
+        461,
+        205
+      ]
+    },
+    {
+      "text": [],
+      "color": "#d88a83",
+      "bbox": [
+        280,
+        1332,
+        462,
+        203
+      ]
+    },
+    {
+      "text": [],
+      "color": "#d5665d",
+      "bbox": [
+        281,
+        1171,
+        461,
+        106
+      ]
+    },
+    {
+      "text": [],
+      "color": "#dad9d9",
+      "bbox": [
+        582,
+        1427,
+        145,
+        97
+      ]
+    },
+    {
+      "text": [],
+      "color": "#e5e2e2",
+      "bbox": [
+        299,
+        1426,
+        136,
+        63
+      ]
+    },
+    {
+      "text": [],
+      "color": "#d7e5f3",
+      "bbox": [
+        469,
+        149,
+        82,
+        95
+      ]
+    },
+    {
+      "text": [],
+      "color": "#e3f2ef",
+      "bbox": [
+        469,
+        428,
+        78,
+        94
+      ]
+    },
+    {
+      "text": [],
+      "color": "#e8e7e7",
+      "bbox": [
+        452,
+        1427,
+        113,
+        62
+      ]
+    },
+    {
+      "text": [],
+      "color": "#edbeba",
+      "bbox": [
+        455,
+        1217,
+        19,
+        23
+      ]
+    }
+  ]
+}

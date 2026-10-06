@@ -1,0 +1,84 @@
+{
+  "elements": [
+    {
+      "text": [],
+      "color": "#009587",
+      "bbox": [
+        116,
+        57,
+        126,
+        498
+      ]
+    },
+    {
+      "text": [
+        "25000",
+        "Negative"
+      ],
+      "color": "#b41b1b",
+      "bbox": [
+        368,
+        279,
+        127,
+        276
+      ]
+    },
+    {
+      "text": [
+        "10000",
+        "Positive"
+      ],
+      "color": "#c1c1c1",
+      "bbox": [
+        152,
+        564,
+        52,
+        13
+      ]
+    },
+    {
+      "text": [
+        "Neutral"
+      ],
+      "color": "#c2c2c2",
+      "bbox": [
+        660,
+        563,
+        49,
+        14
+      ]
+    },
+    {
+      "text": [
+        "45000",
+        "40000",
+        "30000",
+        "3",
+        "20000"
+      ],
+      "color": "#adadad",
+      "bbox": [
+        31,
+        218,
+        41,
+        11
+      ]
+    },
+    {
+      "text": [
+        "TextBlob Sentiment Distribution",
+        "TextBlob Positive",
+        "TextBlob Negative",
+        "TextBlob Neutral",
+        "30000"
+      ],
+      "color": "#951616",
+      "bbox": [
+        603,
+        67,
+        28,
+        10
+      ]
+    }
+  ]
+}

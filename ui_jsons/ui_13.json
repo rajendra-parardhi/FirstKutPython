@@ -1,0 +1,115 @@
+{
+  "elements": [
+    {
+      "text": [
+        "1",
+        "Mahindra",
+        "3",
+        "University",
+        "Global Thinkers; Engaged Leaders.",
+        "Exam Attendance Sy",
+        "7",
+        "1",
+        "Invigilator ID Card",
+        "Please",
+        "your institutional ID card to continue",
+        "Powered by Q-Tap",
+        "VI,0.0",
+        "Top",
+        "Tap",
+        "tap"
+      ],
+      "color": "#f7eeef",
+      "bbox": [
+        36,
+        263,
+        647,
+        920
+      ]
+    },
+    {
+      "text": [],
+      "color": "#b71c32",
+      "bbox": [
+        0,
+        77,
+        719,
+        185
+      ]
+    },
+    {
+      "text": [],
+      "color": "#e5aeb7",
+      "bbox": [
+        225,
+        510,
+        269,
+        269
+      ]
+    },
+    {
+      "text": [
+        "15.17 00",
+        "0",
+        "#il"
+      ],
+      "color": "#b1a7b1",
+      "bbox": [
+        0,
+        0,
+        719,
+        76
+      ]
+    },
+    {
+      "text": [],
+      "color": "#000000",
+      "bbox": [
+        0,
+        1526,
+        719,
+        73
+      ]
+    },
+    {
+      "text": [],
+      "color": "#ca5969",
+      "bbox": [
+        268,
+        553,
+        182,
+        183
+      ]
+    },
+    {
+      "text": [],
+      "color": "#dd9ca7",
+      "bbox": [
+        374,
+        598,
+        23,
+        92
+      ]
+    },
+    {
+      "text": [],
+      "color": "#cc7986",
+      "bbox": [
+        438,
+        861,
+        20,
+        26
+      ]
+    },
+    {
+      "text": [],
+      "color": "#cc7e8a",
+      "bbox": [
+        380,
+        868,
+        19,
+        20
+      ]
+    }
+  ]
+}

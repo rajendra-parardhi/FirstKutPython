@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slot Booking</title>
+    <!-- Using Google Fonts for 'Inter' - a modern sans-serif font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* CSS Variables for consistent styling */
+        :root {
+            --bg-color: #211B22; /* Main background */
+            --input-bg-color: #292B34; /* Input field background */
+            --text-color-primary: #FFFFFF; /* White text for labels, titles, button */
+            --text-color-secondary: #D3D3D3; /* Lighter grey for placeholders and icons */
+            --button-color: #EA5F57; /* Reddish-orange send button */
+            --border-radius: 12px; /* Consistent rounded corners */
+            --padding-base: 20px; /* Base padding for sections */
+            --spacing-medium: 20px; /* Vertical spacing between form groups */
+            --spacing-small: 8px; /* Vertical spacing between label and input */
+        }
+
+        /* Base styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color-primary);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Full viewport height */
+            font-size: 14px; /* Default font size */
+        }
+
+        /* Header (App Bar) */
+        .header {
+            display: flex;
+            align-items: center;
+            padding: var(--padding-base);
+            padding-top: 40px; /* Offset for simulated status bar */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow if desired, though image has none */
+            background-color: var(--bg-color); /* Ensure header background matches body */
+        }
+
+        .header-back-icon {
+            font-size: 24px;
+            margin-right: 15px;
+            cursor: pointer;
+            color: var(--text-color-primary);
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 600; /* Semi-bold for title */
+            color: var(--text-color-primary);
+        }
+
+        /* Main form content area */
+        .form-container {
+            flex-grow: 1; /* Allows form to take available space */
+            padding: var(--padding-base);
+            padding-top: 0; /* No extra padding at top as header has some */
+            overflow-y: auto; /* Enable scrolling if content is too long */
+        }
+
+        /* Individual form group styling */
+        .form-group {
+            margin-bottom: var(--spacing-medium);
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: var(--spacing-small);
+            font-size: 16px;
+            font-weight: 500; /* Medium weight for labels */
+        }
+
+        /* Styling for all input types, select, and textarea */
+        .form-group input[type="text"],
+        .form-group input[type="email"],
+        .form-group input[type="tel"],
+        .form-group select,
+        .form-group textarea {
+            width: 100%; /* Full width of its parent */
+            padding: 12px 16px;
+            background-color: var(--input-bg-color);
+            border: none;
+            border-radius: var(--border-radius);
+            color: var(--text-color-primary);
+            font-size: 14px;
+            box-sizing: border-box; /* Include padding in element's total width/height */
+            outline: none; /* Remove default focus outline */
+            -webkit-appearance: none; /* For dropdown arrow customization */
+            -moz-appearance: none;
+            appearance: none;
+        }
+
+        /* Placeholder text color */
+        .form-group input::placeholder,
+        .form-group textarea::placeholder,
+        .form-group select:invalid { /* For default select option */
+            color: var(--text-color-secondary);
+        }
+        .form-group select option { /* For actual dropdown options */
+            color: var(--text-color-primary);
+            background-color: var(--input-bg-color); /* Match dropdown menu background */
+        }
+
+        /* Custom dropdown arrow for select element */
+        .form-group select {
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%23D3D3D3" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            padding-right: 40px; /* Make space for the custom arrow */
+        }
+        /* Hide default arrow in IE/Edge */
+        .form-group select::-ms-expand {
+            display: none;
+        }
+
+
+        /* Slot input with icon */
+        .form-group .slot-input-wrapper {
+            position: relative;
+            display: flex; /* Ensures input and icon align */
+            align-items: center;
+        }
+
+        .form-group .slot-input-wrapper input {
+            padding-right: 40px; /* Space for the clock icon */
+            cursor: pointer; /* Indicate it's clickable */
+        }
+        .form-group .slot-input-wrapper input:read-only {
+            background-color: var(--input-bg-color); /* Maintain background for read-only */
+        }
+
+
+        .form-group .slot-input-wrapper .slot-icon {
+            position: absolute;
+            right: 16px;
+            color: var(--text-color-secondary);
+            font-size: 20px;
+            pointer-events: none; /* Allow clicks to pass through to the input */
+        }
+
+        /* Textarea specific styling */
+        .form-group textarea {
+            resize: vertical; /* Allow vertical resizing only */
+            min-height: 100px; /* Minimum height for the message box */
+        }
+
+        /* Send button container */
+        .button-container {
+            padding: var(--padding-base);
+            width: 100%;
+            box-sizing: border-box; /* Ensures padding is included in width */
+            background-color: var(--bg-color); /* Background under the button */
+        }
+
+        .send-button {
+            width: 100%;
+            padding: 16px;
+            background-color: var(--button-color);
+            color: var(--text-color-primary);
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 18px;
+            font-weight: 600; /* Semi-bold for button text */
+            cursor: pointer;
+            transition: background-color 0.3s ease; /* Smooth hover effect */
+        }
+
+        .send-button:hover {
+            background-color: #d14a42; /* Slightly darker red on hover */
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <i class="fas fa-arrow-left header-back-icon" onclick="history.back()"></i>
+        <span class="header-title">Slot Booking</span>
+    </div>
+
+    <div class="form-container">
+        <div class="form-group">
+            <label for="fullName">Full Name</label>
+            <input type="text" id="fullName" placeholder="Enter your name">
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="Enter email address">
+        </div>
+
+        <div class="form-group">
+            <label for="mobileNumber">Mobile Number</label>
+            <input type="tel" id="mobileNumber" placeholder="Enter your number">
+        </div>
+
+        <div class="form-group">
+            <label for="location">Location</label>
+            <select id="location">
+                <option value="" disabled selected hidden>Select location</option>
+                <option value="new_york">New York</option>
+                <option value="los_angeles">Los Angeles</option>
+                <option value="chicago">Chicago</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="slot">Slot</label>
+            <div class="slot-input-wrapper">
+                <input type="text" id="slot" placeholder="Select slot" readonly onclick="alert('Open slot picker')">
+                <i class="fas fa-clock slot-icon"></i>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="message">Message</label>
+            <textarea id="message" placeholder="Write a message"></textarea>
+        </div>
+    </div>
+
+    <div class="button-container">
+        <button class="send-button">Send</button>
+    </div>
+</body>
+</html>

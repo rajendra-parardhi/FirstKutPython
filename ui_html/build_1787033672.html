@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexoryd Login</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f0f3f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .phone-container {
+      width: 100%;
+      max-width: 375px;
+      height: 720px;
+      background-color: #e1e7f0;
+      border-radius: 32px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+      border: 8px solid #2d3139;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .status-bar {
+      height: 24px;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .content {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .brand-section {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .brand-logo {
+      font-size: 24px;
+      font-weight: 900;
+      color: #1252b9;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+
+    .welcome-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #222;
+      margin-bottom: 4px;
+    }
+
+    .welcome-desc {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .form-section {
+      margin-top: -20px;
+    }
+
+    .input-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .input-field-container {
+      background-color: #f7f8f8;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      font-size: 16px;
+      font-weight: 600;
+      color: #111;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .country-code {
+      color: #1252b9;
+      margin-right: 8px;
+    }
+
+    .submit-btn {
+      width: 100%;
+      height: 48px;
+      background-color: #1252b9;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-top: 12px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .submit-btn:hover {
+      background-color: #0d3d8c;
+    }
+
+    .terms-text {
+      font-size: 10px;
+      text-align: center;
+      color: #6a7180;
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+
+    /* Custom Numeric Keyboard */
+    .keyboard {
+      background-color: rgba(255, 255, 255, 0.4);
+      border-radius: 16px;
+      padding: 6px;
+      backdrop-filter: blur(10px);
+    }
+
+    .keyboard-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .keyboard-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .key {
+      flex: 1;
+      background-color: #f7f7f7;
+      margin: 0 3px;
+      height: 42px;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 15px;
+      color: #111;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .key:active {
+      background-color: #e5e5e5;
+    }
+
+    .key-sub {
+      font-size: 8px;
+      color: #777;
+      margin-top: -1px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="phone-container">
+    <!-- Simulated Status Bar -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>NEXORYD</span>
+    </div>
+
+    <div class="content">
+      <!-- Top Brand Section -->
+      <div class="brand-section">
+        <div class="brand-logo">NEXORYD</div>
+        <div class="welcome-title">Welcome Back!</div>
+        <div class="welcome-desc">Enter your mobile number to continue</div>
+      </div>
+
+      <!-- Form Inputs -->
+      <div class="form-section">
+        <div class="input-label">Mobile Number</div>
+        <div class="input-field-container">
+          <span class="country-code">+91</span>
+          <span>9876543210</span>
+        </div>
+        <button class="submit-btn">Send OTP</button>
+      </div>
+
+      <div>
+        <!-- Terms and Conditions -->
+        <div class="terms-text">
+          By continuing you agree to our <br><strong>Terms of Service</strong> and <strong>Privacy Policy</strong>
+        </div>
+
+        <!-- Custom Keyboard Grid -->
+        <div class="keyboard">
+          <div class="keyboard-row">
+            <div class="key">1<div class="key-sub">o o</div></div>
+            <div class="key">2<div class="key-sub">A B C</div></div>
+            <div class="key">3<div class="key-sub">D E F</div></div>
+          </div>
+          <div class="keyboard-row">
+            <div class="key">4<div class="key-sub">G H I</div></div>
+            <div class="key">5<div class="key-sub">J K L</div></div>
+            <div class="key">6<div class="key-sub">M N O</div></div>
+          </div>
+          <div class="keyboard-row">
+            <div class="key">7<div class="key-sub">P Q R S</div></div>
+            <div class="key">8<div class="key-sub">T U V</div></div>
+            <div class="key">9<div class="key-sub">W X Y Z</div></div>
+          </div>
+          <div class="keyboard-row">
+            <div class="key" style="background: transparent; box-shadow: none;">*</div>
+            <div class="key">0<div class="key-sub">+</div></div>
+            <div class="key">⌫</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

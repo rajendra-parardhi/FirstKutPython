@@ -1,0 +1,38 @@
+# --- Torch ---
+# Left UNPINNED on purpose: install the build matching your platform first.
+#   CPU:  pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+#   CUDA: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# The Dockerfile filters these two lines out because torch already ships in the
+# base image (letting pip touch them would replace the CUDA build).
+torch
+torchvision
+
+# --- Web API ---
+fastapi
+uvicorn[standard]
+python-multipart
+python-dotenv
+httpx
+pydantic
+
+# --- Vector stores ---
+chromadb
+faiss-cpu
+
+# --- Vision / OCR / segmentation ---
+opencv-python-headless
+numpy
+pillow
+easyocr
+segment-anything
+# Provides `import clip` (OpenAI CLIP)
+clip @ git+https://github.com/openai/CLIP.git
+
+# --- Embeddings + LLM ---
+sentence-transformers
+google-generativeai
+
+# --- HTML rendering (Playwright preferred, html2image as fallback) ---
+playwright
+# After install: playwright install --with-deps chromium
+html2image

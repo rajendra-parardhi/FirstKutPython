@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FirstKutAI Pipeline Integration Dashboard</title>
+  <style>
+    /* Absolute reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #121114;
+      font-family: 'Consolas', 'Courier New', Courier, monospace;
+      color: #dfdfdf;
+      overflow-x: hidden;
+    }
+
+    /* Core workspace setup following absolute design coordinates scaled responsively */
+    .dashboard-canvas {
+      position: relative;
+      width: 100vw;
+      aspect-ratio: 1920 / 1080;
+      background-color: #1c1a21;
+      overflow: hidden;
+      border-bottom: 2px solid #2d2328;
+    }
+
+    /* System log backgrounds / telemetry text */
+    .bg-telemetry-overlay {
+      position: absolute;
+      top: 5%;
+      left: 3%;
+      width: 94%;
+      height: 90%;
+      pointer-events: none;
+      opacity: 0.04;
+      font-size: 1.4vw;
+      line-height: 1.5;
+      font-weight: bold;
+      color: #ffffff;
+      white-space: pre-wrap;
+    }
+
+    /* Component 1: UI Image Parser Top Workspace Panel */
+    .comp-image-parser {
+      position: absolute;
+      left: 0%;
+      top: 0%;
+      width: 100%;
+      height: 38.5%;
+      background-color: rgba(45, 35, 40, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 1.5%;
+      display: flex;
+      flex-direction: column;
+      z-index: 5;
+    }
+
+    .comp-image-parser h2 {
+      font-size: 1.5vw;
+      color: #ffe066;
+      margin-bottom: 0.5%;
+    }
+
+    .comp-image-parser .logs {
+      font-size: 0.9vw;
+      line-height: 1.6;
+      color: #cccccc;
+      overflow-y: auto;
+    }
+
+    /* Component 4: High top system simulation bar */
+    .comp-browser-bar {
+      position: absolute;
+      left: 0%;
+      top: 0%;
+      width: 100%;
+      height: 16.3%;
+      background-color: #482d2a;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 0.8% 1.5%;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .browser-tabs-row {
+      display: flex;
+      align-items: center;
+      gap: 1.5%;
+    }
+
+    .dot-buttons {
+      display: flex;
+      gap: 5px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .dot.red { background-color: #ff5f56; }
+    .dot.yellow { background-color: #ffbd2e; }
+    .dot.green { background-color: #27c93f; }
+
+    .browser-url-bar {
+      background-color: rgba(0, 0, 0, 0.4);
+      border-radius: 20px;
+      padding: 2px 15px;
+      font-size: 0.75vw;
+      color: #bfaea5;
+      flex-grow: 1;
+    }
+
+    .system-status-info {
+      font-size: 0.8vw;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* Component 5: Synthesis Status Monitor Fail Panel */
+    .comp-synthesis-status {
+      position: absolute;
+      left: 28.9%;
+      top: 37.7%;
+      width: 69.3%;
+      height: 53.8%;
+      background-color: #090a0f;
+      border: 1.5px solid #ff4a5a;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3%;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+      z-index: 6;
+    }
+
+    .status-alert-icon {
+      font-size: 3.5vw;
+      color: #ff4a5a;
+      margin-bottom: 1.5%;
+    }
+
+    .status-alert-text {
+      font-size: 1.6vw;
+      font-weight: bold;
+      color: #ff4a5a;
+      margin-bottom: 1%;
+    }
+
+    .status-desc {
+      font-size: 1vw;
+      color: #8a8f98;
+    }
+
+    /* Component 3: Screenshot Uploader Block */
+    .comp-upload-block {
+      position: absolute;
+      left: 1.1%;
+      top: 76.6%;
+      width: 23.8%;
+      height: 12.5%;
+      background-color: #14151c;
+      border: 2px dashed #3a6df0;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      z-index: 6;
+    }
+
+    .comp-upload-block:hover {
+      background-color: #1b1d28;
+    }
+
+    .comp-upload-block .icon {
+      font-size: 1.8vw;
+      color: #3a6df0;
+      margin-bottom: 4px;
+    }
+
+    .comp-upload-block label {
+      font-size: 0.9vw;
+      font-weight: bold;
+      color: #3a6df0;
+      cursor: pointer;
+    }
+
+    /* Component 2: Flutter Output Indicator Tab */
+    .comp-flutter-output {
+      position: absolute;
+      left: 62.5%;
+      top: 25%;
+      width: 7.8%;
+      height: 5.5%;
+      background-color: #1b151a;
+      border-radius: 6px 6px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8vw;
+      font-weight: bold;
+      color: #ffffff;
+      border-top: 2px solid #02569B;
+      z-index: 12;
+    }
+
+    /* Component 9: SOURCE UI CONTROL PANEL Header Tag */
+    .comp-control-panel-header {
+      position: absolute;
+      left: 0.9%;
+      top: 27%;
+      width: 12.5%;
+      height: 1.6%;
+      background-color: rgba(52, 56, 75, 0.4);
+      color: #34384b;
+      font-size: 0.75vw;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      padding-left: 5px;
+      z-index: 12;
+    }
+
+    /* Component 10: Settings navigation redirect */
+    .comp-settings-nav {
+      position: absolute;
+      left: 66.5%;
+      top: 12.7%;
+      width: 5.2%;
+      height: 1.0%;
+      color: #7a5450;
+      font-size: 0.6vw;
+      text-decoration: underline;
+      cursor: pointer;
+      z-index: 12;
+    }
+
+    /* Component 8: Color Selector tag info block */
+    .comp-color-tag {
+      position: absolute;
+      left: 44.6%;
+      top: 27.4%;
+      width: 2.5%;
+      height: 1.3%;
+      background-color: #303547;
+      color: #ffffff;
+      font-size: 0.6vw;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 12;
+    }
+
+    /* Component 6: Subtle system block indicator */
+    .comp-status-indicator {
+      position: absolute;
+      left: 27.9%;
+      top: 12.1%;
+      width: 1.3%;
+      height: 2%;
+      background-color: #96807c;
+      border-radius: 2px;
+      z-index: 12;
+    }
+
+    /* Component 0: Base White workspace content representation */
+    .comp-base-sandbox {
+      width: 100%;
+      min-height: 412px;
+      background-color: #ffffff;
+      padding: 30px;
+      color: #333333;
+    }
+
+    .sandbox-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .sandbox-header {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1c1a21;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #eaeaea;
+      padding-bottom: 10px;
+    }
+
+    .sandbox-body {
+      background-color: #f7f9fa;
+      border: 1px solid #e1e4e8;
+      border-radius: 8px;
+      padding: 20px;
+      font-size: 16px;
+      line-height: 1.6;
+      color: #586069;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Main 16:9 Dashboard Container (Relative Canvas) -->
+  <div class="dashboard-canvas">
+
+    <!-- Subtle Background execution log details overlay (Component 7 text data) -->
+    <div class="bg-telemetry-overlay">
+Completed FirstKutAI Pipeline Integration
+PIPELINE EXECUTION STAGES
+Stage 1 Layout Segmentation SAM 45.42s
+Stage 2 Text Extraction OCR 187.46s
+Stage 3 Element Color Profiling 143.24s
+Stage 4 Intelligent Orchestration Synthesis 17.19s
+Stage 5 Visual Alignment Check CLIP 0.38s
+Stage 6 Reconciliation Promotion
+SYNTHESIS ENGINE: gemini-1.5-flash
+SELECTION REASON CONTEXT: High structural match 89.59%
+Fast DOM refinement applied
+    </div>
+
+    <!-- Component 4: Simulation UI Browser Top Bar -->
+    <div class="comp-browser-bar">
+      <div class="browser-tabs-row">
+        <div class="dot-buttons">
+          <div class="dot red"></div>
+          <div class="dot yellow"></div>
+          <div class="dot green"></div>
+        </div>
+        <div class="browser-url-bar">localhost:5173/unified-compiler-studio</div>
+      </div>
+      <div class="system-status-info">
+        Google AI Studio  |  presingirajakumar@gmail.com  |  Ask Gemini  |  Chrome can restore tabs on start
+      </div>
+    </div>
+
+    <!-- Component 1: Workspace telemetry summary & headers -->
+    <div class="comp-image-parser">
+      <h2>UI Image Parser Workspace</h2>
+      <div class="logs">
+        Workspace API: http://localhost:8000 <br>
+        SAM Segmentation Active | OCR Text Similarity Match: Completed <br>
+        Framework: HTML, CSS, Dart Code outputs formatting...
+      </div>
+    </div>
+
+    <!-- Component 5: Failed Code Synthesis Status box -->
+    <div class="comp-synthesis-status">
+      <div class="status-alert-icon">⚠️</div>
+      <div class="status-alert-text">Code synthesis failed on model tier gemini1.5-flash</div>
+      <div class="status-desc">Please check API connection credentials or fallback to standard compilation flow.</div>
+    </div>
+
+    <!-- Component 3: Interactive mock screenshot upload region -->
+    <div class="comp-upload-block">
+      <div class="icon">📁</div>
+      <label>Click to Upload UI Screenshot</label>
+    </div>
+
+    <!-- Component 2: Tab Indicator for Flutter Code -->
+    <div class="comp-flutter-output">
+      Flutter Output
+    </div>
+
+    <!-- Component 9: SOURCE UI CONTROL PANEL Header visual label -->
+    <div class="comp-control-panel-header">
+      SOURCE UI CONTROL PANEL
+    </div>
+
+    <!-- Component 10: Settings navigation redirect link element -->
+    <div class="comp-settings-nav">
+      go to Settings
+    </div>
+
+    <!-- Component 8: Subtle identifier of color tag -->
+    <div class="comp-color-tag">
+      Colors
+    </div>
+
+    <!-- Component 6: Status square -->
+    <div class="comp-status-indicator"></div>
+
+  </div>
+
+  <!-- Component 0: Lower sandbox canvas (White area below canvas area) -->
+  <div class="comp-base-sandbox">
+    <div class="sandbox-container">
+      <div class="sandbox-header">
+        Workspace Sandbox Output Area
+      </div>
+      <div class="sandbox-body">
+        Currently watching pipeline status... Upload UI mocks to begin automated generation mapping and component isolation compiler execution sequences.
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

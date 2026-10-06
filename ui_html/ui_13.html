@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mahindra University Exam Attendance</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* General Reset & Variables */
+        :root {
+            --primary-red: #b71c32; /* From JSON */
+            --card-bg: #f7eeef; /* From JSON */
+            --body-bg: #f8f2f8; /* Light purple/pink from visual inspection, assuming the background outside the card */
+            --text-dark-grey: #4a4a4a;
+            --text-medium-grey: #8a8a8a;
+            --text-light-grey: #c0c0c0;
+            --status-bar-text: #b1a7b1; /* From JSON */
+            --bottom-nav-bg: #000000;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--body-bg);
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Phone Frame Simulation */
+        .phone-frame {
+            width: 360px; /* Standard mobile width for visual demo */
+            height: 720px; /* Standard mobile height */
+            background-color: white; /* Fallback, content-area handles actual bg */
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 15px;
+            background-color: transparent; /* Top part of phone frame is often transparent for status bar */
+            color: var(--status-bar-text);
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .status-bar .left-info,
+        .status-bar .right-icons {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-bar .right-icons span {
+            margin-left: 5px;
+        }
+        /* Placeholder for 'a' icon/notification */
+        .status-bar .left-info .notification-dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--status-bar-text);
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+
+        /* Header (Red Bar) */
+        .header {
+            background-color: var(--primary-red);
+            height: 120px; /* Approx. height from screenshot */
+            width: 100%;
+        }
+
+        /* Main Content Area */
+        .content-area {
+            flex-grow: 1; /* Takes remaining space */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align card to the top part of the content area */
+            padding-top: 25px; /* Spacing below red header */
+            background-color: var(--body-bg); /* Match body background */
+        }
+
+        /* Card Styling */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 25px;
+            width: 90%; /* Responsive width within the phone frame */
+            max-width: 330px; /* Max width to keep it neat on larger screens */
+            padding: 25px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08); /* Subtle shadow */
+            display: flex;
+            flex-direction: column;
+            gap: 25px; /* Vertical spacing between sections */
+            box-sizing: border-box;
+        }
+
+        /* Card Header (Logo & Exam System) */
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(0,0,0,0.05); /* Subtle separator line */
+        }
+
+        .mah-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Mahindra Logo (Stylized 'U' or 'W' approximation) */
+        .mah-logo-icon {
+            width: 40px;
+            height: 40px;
+            position: relative;
+            transform: scale(0.9); /* Slightly smaller */
+        }
+        .mah-logo-icon .stroke-left,
+        .mah-logo-icon .stroke-right {
+            position: absolute;
+            background-color: var(--primary-red);
+        }
+        .mah-logo-icon .stroke-left {
+            width: 12px;
+            height: 70%; /* Shorter left stroke */
+            left: 0;
+            bottom: 0;
+            transform: skewX(-20deg);
+            transform-origin: bottom left;
+        }
+        .mah-logo-icon .stroke-right {
+            width: 12px;
+            height: 100%; /* Longer right stroke */
+            right: 0;
+            bottom: 0;
+            transform: skewX(20deg);
+            transform-origin: bottom right;
+        }
+
+
+        .mah-text h3 {
+            margin: 0;
+            font-size: 1.1em;
+            font-weight: 500;
+            color: var(--text-dark-grey);
+            line-height: 1.2;
+        }
+
+        .mah-text p {
+            margin: 0;
+            font-size: 0.7em;
+            color: var(--text-medium-grey);
+        }
+
+        .exam-system {
+            text-align: right;
+            font-size: 0.75em;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+            color: var(--text-light-grey);
+        }
+        .exam-system .top-label {
+            font-size: 0.6em;
+            color: var(--text-light-grey);
+            text-transform: uppercase;
+        }
+
+        /* Invigilator Tap Section */
+        .invigilator-tap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+
+        .tap-icon-container {
+            width: 150px;
+            height: 150px;
+            background-color: var(--primary-red);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            box-shadow: 0 5px 10px rgba(var(--primary-red), 0.3); /* Subtle shadow for icon */
+        }
+
+        .tap-icon-waves {
+            width: 80px; /* Innermost wave size */
+            height: 80px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .tap-icon-waves span {
+            position: absolute;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-sizing: border-box;
+            /* Adjust sizes to create concentric circles */
+        }
+
+        .tap-icon-waves span:nth-child(1) {
+            width: 40px;
+            height: 40px;
+            opacity: 0.8; /* Slightly less opaque for inner */
+        }
+
+        .tap-icon-waves span:nth-child(2) {
+            width: 60px;
+            height: 60px;
+            opacity: 0.9;
+        }
+
+        .tap-icon-waves span:nth-child(3) {
+            width: 80px;
+            height: 80px;
+            opacity: 1; /* Fully opaque for outermost */
+        }
+
+        .invigilator-text h2 {
+            margin: 0;
+            color: var(--primary-red);
+            font-size: 1.4em;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .invigilator-text p {
+            margin: 5px 0 0 0;
+            color: var(--text-medium-grey);
+            font-size: 0.9em;
+            text-align: center;
+        }
+
+        /* Card Footer */
+        .card-footer {
+            text-align: center;
+            margin-top: 30px; /* Space above footer text */
+            font-size: 0.75em;
+            color: var(--text-medium-grey);
+        }
+
+        .card-footer strong {
+            display: block;
+            margin-bottom: 3px;
+            font-weight: 400; /* Regular weight for "Powered by Q-Tap" */
+        }
+
+        /* Bottom Navigation Bar */
+        .bottom-nav {
+            background-color: var(--bottom-nav-bg);
+            height: 50px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            color: white; /* Icons color */
+            font-size: 1.5em; /* Size of the placeholder icons */
+        }
+        .bottom-nav span {
+            cursor: pointer;
+            line-height: 1; /* Ensure icons are vertically centered */
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <div class="status-bar">
+            <div class="left-info">
+                <span>15:17</span>
+                <span class="notification-dot"></span>
+            </div>
+            <div class="right-icons">
+                <span>&#x1F4F6;</span> <!-- Wifi -->
+                <span>&#x1F4F1;</span> <!-- Mobile Signal (general phone icon) -->
+                <span>69% &#x1F50B;</span> <!-- Battery with percentage -->
+            </div>
+        </div>
+
+        <div class="header"></div>
+
+        <div class="content-area">
+            <div class="card">
+                <div class="card-header">
+                    <div class="mah-logo">
+                        <div class="mah-logo-icon">
+                            <div class="stroke-left"></div>
+                            <div class="stroke-right"></div>
+                        </div>
+                        <div class="mah-text">
+                            <h3>Mahindra</h3>
+                            <h3>University</h3>
+                            <p>Global Thinkers. Engaged Leaders.</p>
+                        </div>
+                    </div>
+                    <div class="exam-system">
+                        <span class="top-label">Q-Top</span>
+                        <span>Exam Attendance System</span>
+                    </div>
+                </div>
+
+                <div class="invigilator-tap">
+                    <div class="tap-icon-container">
+                        <div class="tap-icon-waves">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                    <div class="invigilator-text">
+                        <h2>Tap Invigilator ID Card</h2>
+                        <p>Please tap your institutional ID card to continue</p>
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    <strong>Powered by Q-Tap</strong>
+                    <span>v1.0.0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <span>&#x2261;</span> <!-- Hamburger menu -->
+            <span>&#x25A1;</span> <!-- Square -->
+            <span>&#x25B3;</span> <!-- Triangle -->
+        </div>
+    </div>
+</body>
+</html>

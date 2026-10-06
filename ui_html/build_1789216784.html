@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI Image Parser Compiler Workspace</title>
+  <style>
+    :root {
+      --bg-dark: #0f111a;
+      --header-bg: #2d2429;
+      --banner-bg: #482d2a;
+      --badge-accent: #96807c;
+      --settings-link: #7a5450;
+      --btn-sim: #1c171c;
+      --btn-ctrl: #34384b;
+      --btn-sam: #2f3345;
+      --btn-cols: #303547;
+      --metrics-bg: #202d3e;
+      --logs-bg: #18263a;
+      --engine-bg: #1c273f;
+      --weather-bg: #14151b;
+      --output-bg: #656d79;
+      --failed-panel-bg: #f1f1f2;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-dark);
+      color: #f1f1f2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ID 0: Header Section */
+    header {
+      background-color: var(--header-bg);
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* ID 6: Top Info Banner inside Header */
+    .top-banner {
+      background-color: var(--banner-bg);
+      border-radius: 6px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .banner-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* ID 9: Small Badge Accent */
+    .color-badge {
+      width: 26px;
+      height: 22px;
+      background-color: var(--badge-accent);
+      border-radius: 4px;
+    }
+
+    .banner-text {
+      font-size: 13px;
+      font-weight: 500;
+      color: #ffffff;
+    }
+
+    /* ID 15: Settings link */
+    .settings-link {
+      color: var(--settings-link);
+      font-size: 13px;
+      text-decoration: underline;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .settings-link:hover {
+      color: #cf9b95;
+    }
+
+    .workspace-info {
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: #bfaab1;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    /* Controls bar containing 12, 13, 14, 4 */
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .ctrl-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tag-ctrl { background-color: var(--btn-ctrl); }
+    .tag-sam { background-color: var(--btn-sam); }
+    .tag-cols { background-color: var(--btn-cols); }
+    .tag-sim { 
+      background-color: var(--btn-sim); 
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* Main Area Grid Layout */
+    .workspace-container {
+      max-width: 1920px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      flex-grow: 1;
+    }
+
+    @media (min-width: 992px) {
+      .workspace-container {
+        grid-template-columns: 1.2fr 1.3fr 1.5fr;
+      }
+    }
+
+    /* ID 3: Metrics Dashboard panel (Spans top on smaller screens, can be styled elegantly) */
+    .metrics-full-width {
+      grid-column: 1 / -1;
+      background-color: var(--metrics-bg);
+      border-radius: 8px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .metrics-full-width h3 {
+      font-size: 12px;
+      color: #00d2ff;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .metrics-full-width p {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #cddee8;
+    }
+
+    /* Columns Setup */
+    .left-column {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ID 11: System Logs Container */
+    .system-logs {
+      background-color: var(--logs-bg);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .logs-title {
+      color: #ffb703;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .logs-terminal {
+      font-family: "Courier New", Courier, monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #a4b3c6;
+    }
+
+    /* ID 10: Nested Synthesis Engine inside Logs */
+    .engine-reasoning {
+      background-color: var(--engine-bg);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #79a1d1;
+    }
+
+    /* ID 8: Weather/status tracker widget */
+    .status-tracker {
+      background-color: var(--weather-bg);
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 11px;
+      color: #656d79;
+      line-height: 1.4;
+    }
+
+    /* ID 7: Original Input View Box */
+    .original-input {
+      background-color: #000;
+      border: 2px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .original-input h4 {
+      font-size: 12px;
+      letter-spacing: 1px;
+      color: #8c8f9a;
+      text-transform: uppercase;
+    }
+
+    .input-canvas-preview {
+      background-color: #0d0f14;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      flex-grow: 1;
+      min-height: 250px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #3f4454;
+      font-size: 12px;
+      text-align: center;
+      padding: 16px;
+    }
+
+    /* ID 5: HTML Output Render Area */
+    .html-output-render {
+      background-color: var(--output-bg);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .html-output-render h4 {
+      font-size: 12px;
+      color: #ffffff;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* ID 2: Nested Failure Alert block inside Output */
+    .synthesis-failed-panel {
+      background-color: var(--failed-panel-bg);
+      border-radius: 6px;
+      padding: 20px;
+      color: #2d2429;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .synthesis-failed-panel h5 {
+      color: #d90429;
+      font-size: 15px;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .synthesis-failed-panel p {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #495057;
+    }
+
+    /* ID 1: Bottom Canvas Margin/Footer */
+    footer {
+      background-color: #ffffff;
+      padding: 12px;
+      text-align: center;
+      font-size: 11px;
+      color: #2d2429;
+      font-weight: 600;
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ID 0: Main Workspace Header -->
+  <header>
+    <!-- ID 6: Unified Banner -->
+    <div class="top-banner">
+      <div class="banner-left">
+        <!-- ID 9: Small Badge Accent -->
+        <div class="color-badge"></div>
+        <span class="banner-text">Google AI Studio • Unified Code Generation Studio - Continue where you left off</span>
+      </div>
+      <!-- ID 15: Settings action link -->
+      <span class="settings-link">go to Settings</span>
+    </div>
+
+    <div class="workspace-info">
+      UI Image Parser Upload Files Figma Compiler Workspace API http://localhost:8000
+    </div>
+
+    <!-- Controls elements (12, 13, 14, 4) -->
+    <div class="controls-row">
+      <div class="ctrl-tag tag-ctrl">SOURCE UI CONTROL PANEL</div> <!-- ID 12 -->
+      <div class="ctrl-tag tag-sam">SAM Segmentation</div> <!-- ID 13 -->
+      <div class="ctrl-tag tag-cols">Colors</div> <!-- ID 14 -->
+      <div class="ctrl-tag tag-sim">Similarity</div> <!-- ID 4 -->
+    </div>
+  </header>
+
+  <!-- Workspace Central Grid -->
+  <main class="workspace-container">
+    
+    <!-- ID 3: Metrics Dashboard Section -->
+    <section class="metrics-full-width">
+      <h3>Reconstruction Metrics & CLIP Semantic Verification</h3>
+      <p>Evaluates structural similarities and color themes between original source CLIP MATCH inputs and compiled HTML outputs.</p>
+    </section>
+
+    <!-- Left Workspace Column -->
+    <div class="left-column">
+      <!-- ID 11: System logs -->
+      <section class="system-logs">
+        <div class="logs-title">SYSTEM LOGS PIPELINE TELEMETRY LIVE STREAM</div>
+        <div class="logs-terminal">
+          Completed FirstKutAI Pipeline Integration<br><br>
+          PIPELINE EXECUTION STAGES:<br>
+          Stage 1: Layout Segmentation SAM [470495]<br>
+          Stage 2: Text Extraction OCR [21368s]<br>
+          Stage 3: Element Color Profiling [191635]<br>
+          Stage 4: Intelligent Orchestration Synthesis [254495]<br>
+          Stage 5: Visual Alignment Check CLIP [0385]<br>
+          Stage 6: Reconciliation Promotion<br><br>
+          TOTAL ENGINE RUNTIME: 113.413s
+        </div>
+
+        <!-- ID 10: Selection reasons nested inside logs container -->
+        <div class="engine-reasoning">
+          <strong>SYNTHESIS ENGINE PRO SELECTION REASON CONTEXT:</strong><br>
+          High structural match 89.59% • Fast DOM refinement applied via Gemini workspace.
+        </div>
+      </section>
+
+      <!-- ID 8: Weather / Node Status Block -->
+      <div class="status-tracker">
+        Node state: Active showers in compiler engine local instance • Localhost server status 46&deg;F
+      </div>
+    </div>
+
+    <!-- Center Column (ID 7: Input View Canvas) -->
+    <section class="original-input">
+      <h4>Original Input View</h4>
+      <div class="input-canvas-preview">
+        <div>
+          <p>Salelanttcl Ot T Ju Mcord Cnen An Lattt etERdnEt Hinela</p>
+          <p style="font-size: 10px; opacity: 0.5; margin-top: 8px;">Active Search Frame / Layout Viewport Detection</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column (ID 5: HTML Output Render) -->
+    <section class="html-output-render">
+      <h4>HTML Output Render</h4>
+      
+      <!-- ID 2: Nested Failure Box inside Output Render Area -->
+      <div class="synthesis-failed-panel">
+        <h5>HTML Synthesis Failed</h5>
+        <p>Similarity comparison suspended. Diagnostics: Unresolved DOM structures detected. Retrying with local configuration fallback loop...</p>
+        <p style="margin-top: 10px; font-size: 11px; font-family: monospace; opacity: 0.7;">ENG_CODE: 1353_6_d_c_12092026_IN</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ID 1: Bottom Accent / Footer Area -->
+  <footer>
+    Unified Code Generation Pipeline Studio 2026
+  </footer>
+
+</body>
+</html>
