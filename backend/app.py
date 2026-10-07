@@ -34,10 +34,14 @@ os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE") # Prevents MKL/OMP crashes
 os.environ.setdefault("OMP_NUM_THREADS", "1")         # Limits CPU thread usage for stability
 
 import cv2, json, torch, shutil, re, io, base64, time, traceback, asyncio, threading, uuid
+import zipfile, tempfile, subprocess
+from urllib.parse import urlparse
 import numpy as np
 import chromadb
+import pandas as pd
 from chromadb.utils import embedding_functions
 from PIL import Image
+from pypdf import PdfReader
 from fastapi import UploadFile, File
 
 # Diagnostic Wrapper for CLIP and Torchvision compatibility
@@ -100,6 +104,8 @@ nemotron_model = SentenceTransformer('nvidia/Nemotron-3-Embed-1B-BF16', device=D
 
 client = chromadb.PersistentClient(path=str(CHROMA_DIR))
 collection = client.get_or_create_collection(name="ui_components")
+documents_collection = client.get_or_create_collection(name="documents_kb")
+code_collection = client.get_or_create_collection(name="code_repo_kb")
 
 SAM_CHECKPOINT = os.environ.get("SAM_CHECKPOINT", "sam_vit_b_01ec64.pth")
 
@@ -750,6 +756,10 @@ class FigmaGeneratePayload(BaseModel):
     componentName: str = "FigmaExport"
     pageJson: dict
 
+class GitRepoPayload(BaseModel):
+    repo_url: str
+    branch: str = "main"
+
 def require_api_key(x_api_key: Optional[str] = Header(None)):
     """Shared-secret guard for every /api/* route when API_KEY is configured."""
     if not API_KEY:
@@ -1105,6 +1115,155 @@ async def ingest_folder(files: List[UploadFile] = File(...), _=Depends(require_a
     job["progress"] = {"current_file": "Initializing...", "processed": 0, "total": len(entries)}
     _spawn_job(job, _ingest_folder_pipeline, entries)
     return {"job_id": job["job_id"], "status": job["status"], "details": {"total": len(entries)}}
+
+def _ingest_zip_pipeline(job, contents):
+    results = {"processed": 0, "errors": []}
+    with zipfile.ZipFile(io.BytesIO(contents)) as archive:
+        entries = [
+            info for info in archive.infolist()
+            if not info.is_dir()
+            and info.filename.lower().endswith((".png", ".jpg", ".jpeg", ".webp"))
+            and not info.filename.startswith("__MACOSX/")
+            and not Path(info.filename).name.startswith(".")
+        ]
+        if not entries:
+            raise ValueError("The ZIP archive contains no supported images")
+
+        job["progress"] = {"current_file": "", "processed": 0, "total": len(entries)}
+        for info in entries[:500]:
+            filename = Path(info.filename).name
+            job["progress"] = {"current_file": filename, "processed": results["processed"], "total": len(entries)}
+            if info.file_size > 20 * 1024 * 1024:
+                results["errors"].append({"file": filename, "error": "Image exceeds 20 MB"})
+                continue
+            try:
+                image = Image.fromarray(bytes_to_numpy(archive.read(info)))
+                _, masks, raw_np, _ = step_1_sam(image)
+                texts, _, _ = step_2_ocr(masks, image)
+                colors_hex, colors_rgb_str, _ = step_3_color(masks, raw_np)
+                ui_json, _, _ = step_5_json(masks, texts, colors_hex, colors_rgb_str, raw_np)
+                flutter, html, _ = step_6_code(ui_json, "", "", raw_np, filename, texts, masks)
+                save_to_memory(raw_np, ui_json, flutter, html, texts, masks)
+                results["processed"] += 1
+            except Exception as err:
+                results["errors"].append({"file": filename, "error": str(err)})
+            job["progress"] = {"current_file": filename, "processed": results["processed"], "total": len(entries)}
+
+    if len(entries) > 500:
+        results["errors"].append({"file": "archive", "error": "Only the first 500 images were processed"})
+    return {"status": "Success", "category": "UI_IMAGE_ZIP", "details": results}
+
+@app.post("/api/kb/ingest_zip")
+async def ingest_zip(file: UploadFile = File(...), _=Depends(require_api_key)):
+    filename = Path(file.filename or "").name
+    if Path(filename).suffix.lower() != ".zip":
+        raise HTTPException(status_code=400, detail="Upload a ZIP archive")
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="The uploaded ZIP archive is empty")
+    try:
+        with zipfile.ZipFile(io.BytesIO(contents)) as archive:
+            if not any(info.filename.lower().endswith((".png", ".jpg", ".jpeg", ".webp")) for info in archive.infolist()):
+                raise HTTPException(status_code=400, detail="The ZIP archive contains no supported images")
+    except zipfile.BadZipFile as err:
+        raise HTTPException(status_code=400, detail="The uploaded file is not a valid ZIP archive") from err
+
+    job = _create_job("ingest_zip")
+    _spawn_job(job, _ingest_zip_pipeline, contents)
+    return {"job_id": job["job_id"], "status": job["status"]}
+
+def _ingest_document_pipeline(job, filename, contents):
+    extension = Path(filename).suffix.lower()
+    chunks = []
+    if extension == ".pdf":
+        for page_number, page in enumerate(PdfReader(io.BytesIO(contents)).pages, start=1):
+            text = page.extract_text() or ""
+            if text.strip():
+                chunks.append((text, {"source": filename, "type": "pdf", "page": page_number}))
+    elif extension == ".csv":
+        table = pd.read_csv(io.BytesIO(contents))
+        text = table.to_string(index=False)
+        chunks.extend((text[index:index + 4000], {"source": filename, "type": "spreadsheet"}) for index in range(0, len(text), 4000))
+    else:
+        workbook = pd.read_excel(io.BytesIO(contents))
+        text = workbook.to_string(index=False)
+        chunks.extend((text[index:index + 4000], {"source": filename, "type": "spreadsheet", "rows": len(workbook)}) for index in range(0, len(text), 4000))
+
+    chunks = [(text, metadata) for text, metadata in chunks if text.strip()]
+    if not chunks:
+        raise ValueError("No readable text or data found in the document")
+
+    job["progress"] = {"current_file": filename, "processed": 0, "total": len(chunks)}
+    for index, (text, metadata) in enumerate(chunks):
+        documents_collection.add(
+            ids=[uuid.uuid4().hex],
+            embeddings=[text_model.encode(text[:4000]).tolist()],
+            documents=[text[:4000]],
+            metadatas=[{**metadata, "category": "DOCUMENTS_KB"}],
+        )
+        job["progress"] = {"current_file": filename, "processed": index + 1, "total": len(chunks)}
+    return {"status": "Success", "category": "DOCUMENTS_KB", "chunks_stored": len(chunks), "filename": filename}
+
+@app.post("/api/kb/ingest_doc")
+async def ingest_document(file: UploadFile = File(...), _=Depends(require_api_key)):
+    filename = Path(file.filename or "").name
+    if Path(filename).suffix.lower() not in {".pdf", ".xlsx", ".xls", ".csv"}:
+        raise HTTPException(status_code=400, detail="Supported formats are PDF, XLSX, XLS, and CSV")
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="The uploaded document is empty")
+
+    job = _create_job("ingest_document")
+    _spawn_job(job, _ingest_document_pipeline, filename, contents)
+    return {"job_id": job["job_id"], "status": job["status"]}
+
+def _ingest_github_pipeline(job, repo_url, branch):
+    valid_extensions = {".dart", ".html", ".css", ".js", ".jsx", ".ts", ".tsx", ".py", ".json"}
+    stored_files = 0
+    with tempfile.TemporaryDirectory() as temp_dir:
+        subprocess.run(
+            ["git", "clone", "--depth", "1", "--branch", branch, repo_url, temp_dir],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        files = []
+        for root, directories, names in os.walk(temp_dir):
+            directories[:] = [name for name in directories if name not in {".git", "node_modules", "build", "dist"}]
+            for name in names:
+                path = Path(root) / name
+                if not path.is_symlink() and path.suffix.lower() in valid_extensions and path.stat().st_size <= 1024 * 1024:
+                    files.append(path)
+
+        job["progress"] = {"current_file": "", "processed": 0, "total": min(len(files), 500)}
+        for path in files[:500]:
+            content = path.read_text(encoding="utf-8", errors="ignore")
+            if content.strip():
+                relative_path = path.relative_to(temp_dir).as_posix()
+                code_collection.add(
+                    ids=[uuid.uuid4().hex],
+                    embeddings=[text_model.encode(content[:4000]).tolist()],
+                    documents=[content[:4000]],
+                    metadatas=[{"repo": repo_url, "file": relative_path, "category": "CODE_GITHUB"}],
+                )
+                stored_files += 1
+            job["progress"] = {"current_file": path.name, "processed": stored_files, "total": min(len(files), 500)}
+
+    return {"status": "Success", "category": "CODE_REPO_KB", "files_indexed": stored_files, "repo_url": repo_url}
+
+@app.post("/api/kb/ingest_github")
+async def ingest_github_repo(payload: GitRepoPayload, _=Depends(require_api_key)):
+    parsed_url = urlparse(payload.repo_url)
+    repo_path = parsed_url.path.strip("/").removesuffix(".git")
+    if parsed_url.scheme != "https" or parsed_url.hostname != "github.com" or len(repo_path.split("/")) != 2:
+        raise HTTPException(status_code=400, detail="Enter a public GitHub repository HTTPS URL")
+    if not re.fullmatch(r"[A-Za-z0-9._/-]+", payload.branch) or ".." in payload.branch:
+        raise HTTPException(status_code=400, detail="Invalid branch name")
+
+    job = _create_job("ingest_github")
+    _spawn_job(job, _ingest_github_pipeline, payload.repo_url, payload.branch)
+    return {"job_id": job["job_id"], "status": job["status"]}
 
 @app.get("/figma-api/v1/files/{file_key}")
 async def proxy_figma_file(file_key: str, x_figma_token: Optional[str] = Header(None), _=Depends(require_api_key)):

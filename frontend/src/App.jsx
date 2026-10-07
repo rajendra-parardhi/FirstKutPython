@@ -34,6 +34,10 @@ function App() {
 
   // Knowledge Base Modal State
   const [isKnowledgeBaseOpen, setIsKnowledgeBaseOpen] = useState(false);
+  const [kbTab, setKbTab] = useState("zip");
+  const [kbLoading, setKbLoading] = useState(false);
+  const [kbMessage, setKbMessage] = useState(null);
+  const [githubUrl, setGithubUrl] = useState("");
 
   // Real-time rendering tracker for pipeline steps (SAM to Code Synthesis)
   const [liveSteps, setLiveSteps] = useState([]);
@@ -113,6 +117,78 @@ function App() {
     } finally {
       setIsIngesting(false);
       e.target.value = "";
+    }
+  };
+
+  const handleKbFileUpload = async (event, endpoint) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setKbLoading(true);
+    setKbMessage({ type: "info", text: `Uploading ${file.name}...` });
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await axios.post(`${API}/api/kb/${endpoint}`, formData, {
+        headers: apiHeaders(),
+        timeout: 120000,
+      });
+      const job = await pollJob(response.data.job_id, (snapshot) => {
+        const progress = snapshot.progress;
+        if (progress?.total) {
+          setKbMessage({
+            type: "info",
+            text: `${progress.current_file || "Indexing"}: ${progress.processed || 0} of ${progress.total}`,
+          });
+        }
+      });
+      const result = job.result || {};
+      const details = result.details || {};
+      const message = endpoint === "ingest_zip"
+        ? `Indexed ${details.processed || 0} images${details.errors?.length ? `; ${details.errors.length} failed` : ""}.`
+        : `Indexed ${result.chunks_stored || 0} document chunks.`;
+      setKbMessage({ type: "success", text: message });
+    } catch (error) {
+      setKbMessage({
+        type: "error",
+        text: error.response?.data?.detail || error.message || "Knowledge-base ingestion failed.",
+      });
+    } finally {
+      setKbLoading(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleGithubIngest = async (event) => {
+    event.preventDefault();
+    if (!githubUrl.trim()) return;
+
+    setKbLoading(true);
+    setKbMessage({ type: "info", text: "Starting repository indexing..." });
+    try {
+      const response = await axios.post(`${API}/api/kb/ingest_github`, {
+        repo_url: githubUrl.trim(),
+        branch: "main",
+      }, { headers: apiHeaders(), timeout: 120000 });
+      const job = await pollJob(response.data.job_id, (snapshot) => {
+        const progress = snapshot.progress;
+        if (progress?.total) {
+          setKbMessage({
+            type: "info",
+            text: `${progress.current_file || "Indexing repository"}: ${progress.processed || 0} of ${progress.total}`,
+          });
+        }
+      });
+      setKbMessage({ type: "success", text: `Indexed ${job.result?.files_indexed || 0} repository files.` });
+      setGithubUrl("");
+    } catch (error) {
+      setKbMessage({
+        type: "error",
+        text: error.response?.data?.detail || error.message || "Repository indexing failed.",
+      });
+    } finally {
+      setKbLoading(false);
     }
   };
 
@@ -1221,6 +1297,74 @@ function App() {
                 ✕
               </button>
             </div>
+
+            <div role="tablist" aria-label="Knowledge source" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "8px" }}>
+              {[["zip", "UI Images"], ["doc", "Documents"], ["github", "GitHub Repo"]].map(([tab, label]) => (
+                <button
+                  key={tab}
+                  type="button"
+                  role="tab"
+                  aria-selected={kbTab === tab}
+                  onClick={() => { setKbTab(tab); setKbMessage(null); }}
+                  style={{
+                    padding: "9px 6px",
+                    border: kbTab === tab ? "1px solid #38bdf8" : "1px solid #334155",
+                    borderRadius: "4px",
+                    background: kbTab === tab ? "#1e293b" : "#0f172a",
+                    color: kbTab === tab ? "#38bdf8" : "#94a3b8",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {kbTab === "zip" && (
+              <div>
+                <label htmlFor="kb-zip" style={{ display: "block", marginBottom: "6px", color: "#cbd5e1", fontSize: "12px" }}>
+                  UI screenshots archive (.zip)
+                </label>
+                <input id="kb-zip" type="file" accept=".zip" disabled={kbLoading} onChange={(event) => handleKbFileUpload(event, "ingest_zip")} />
+              </div>
+            )}
+
+            {kbTab === "doc" && (
+              <div>
+                <label htmlFor="kb-document" style={{ display: "block", marginBottom: "6px", color: "#cbd5e1", fontSize: "12px" }}>
+                  Design specifications (.pdf, .xlsx, .xls, .csv)
+                </label>
+                <input id="kb-document" type="file" accept=".pdf,.xlsx,.xls,.csv" disabled={kbLoading} onChange={(event) => handleKbFileUpload(event, "ingest_doc")} />
+              </div>
+            )}
+
+            {kbTab === "github" && (
+              <form onSubmit={handleGithubIngest} style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                <label htmlFor="kb-github-url" style={{ width: "100%", color: "#cbd5e1", fontSize: "12px" }}>
+                  Public GitHub repository URL
+                </label>
+                <input
+                  id="kb-github-url"
+                  type="url"
+                  required
+                  value={githubUrl}
+                  onChange={(event) => setGithubUrl(event.target.value)}
+                  placeholder="https://github.com/owner/repository"
+                  disabled={kbLoading}
+                  style={{ flex: "1 1 260px", minWidth: 0, padding: "8px", border: "1px solid #475569", borderRadius: "4px", background: "#020617", color: "#f8fafc" }}
+                />
+                <button type="submit" disabled={kbLoading} style={{ padding: "8px 12px", border: 0, borderRadius: "4px", background: "#0284c7", color: "white", cursor: kbLoading ? "wait" : "pointer" }}>
+                  {kbLoading ? "Indexing..." : "Index repository"}
+                </button>
+              </form>
+            )}
+
+            {kbMessage && (
+              <p role="status" aria-live="polite" style={{ margin: 0, color: kbMessage.type === "error" ? "#f87171" : kbMessage.type === "success" ? "#34d399" : "#38bdf8", fontSize: "12px" }}>
+                {kbMessage.text}
+              </p>
+            )}
 
             {/* Content Body */}
             <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px" }}>
