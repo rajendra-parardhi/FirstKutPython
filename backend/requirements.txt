@@ -34,6 +34,11 @@ clip @ git+https://github.com/openai/CLIP.git
 
 # --- Embeddings + LLM ---
 sentence-transformers
+# Pinned: transformers 5.19.0 crashes at import on CPU-only CI runners
+# (torch.accelerator raises "Cannot access accelerator device when none is
+# available"), failing the Docker build's sanity-import check. 5.18.0 is the
+# last version known to build green. Bump only after re-verifying the build.
+transformers==5.18.0
 google-generativeai
 
 # --- HTML rendering (Playwright preferred, html2image as fallback) ---
