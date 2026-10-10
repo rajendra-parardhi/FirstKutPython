@@ -39,6 +39,10 @@ function App() {
   const [kbMessage, setKbMessage] = useState(null);
   const [githubUrl, setGithubUrl] = useState("");
 
+  // IR Match Popup State (Non-blocking popup for PARTIAL_MATCH / NO_MATCH)
+  const [irEvaluationResult, setIrEvaluationResult] = useState(null);
+  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
+
   // Real-time rendering tracker for pipeline steps (SAM to Code Synthesis)
   const [liveSteps, setLiveSteps] = useState([]);
 
@@ -88,6 +92,7 @@ function App() {
     return figmaPages.find((page) => page.id === activeFigmaPageId) || figmaPages[0];
   }, [figmaPages, activeFigmaPageId]);
 
+  // Bulk folder ingest with automatic IR re-evaluation trigger
   const handleBulkIngest = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -110,6 +115,11 @@ function App() {
       const errorCount = (details.errors || []).length;
       setUiStatus(`Ingestion complete: ${details.processed || 0} images indexed.`);
       alert(`Ingestion Complete! Processed: ${details.processed || 0} images.${errorCount ? ` Errors: ${errorCount}` : ""}`);
+      
+      // Auto-rerun retrieval if an image request is active
+      if (selectedFile) {
+        handleIngestionCompleteAutoRerun();
+      }
     } catch (err) {
       console.error(err);
       setUiStatus("Folder ingestion failed.");
@@ -120,6 +130,7 @@ function App() {
     }
   };
 
+  // KB File Upload with automatic IR re-evaluation trigger
   const handleKbFileUpload = async (event, endpoint) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -148,7 +159,12 @@ function App() {
       const message = endpoint === "ingest_zip"
         ? `Indexed ${details.processed || 0} images${details.errors?.length ? `; ${details.errors.length} failed` : ""}.`
         : `Indexed ${result.chunks_stored || 0} document chunks.`;
-      setKbMessage({ type: "success", text: message });
+      setKbMessage({ type: "success", text: `${message} Auto-rerunning IR retrieval on your request...` });
+
+      // Automatically rerun IR retrieval against original active request
+      if (selectedFile) {
+        setTimeout(handleIngestionCompleteAutoRerun, 800);
+      }
     } catch (error) {
       setKbMessage({
         type: "error",
@@ -180,8 +196,12 @@ function App() {
           });
         }
       });
-      setKbMessage({ type: "success", text: `Indexed ${job.result?.files_indexed || 0} repository files.` });
+      setKbMessage({ type: "success", text: `Indexed ${job.result?.files_indexed || 0} repository files. Auto-rerunning IR retrieval...` });
       setGithubUrl("");
+
+      if (selectedFile) {
+        setTimeout(handleIngestionCompleteAutoRerun, 800);
+      }
     } catch (error) {
       setKbMessage({
         type: "error",
@@ -215,27 +235,29 @@ function App() {
       setClipSimilarity(null);
       setUiPerformanceMetrics(null);
       setLiveSteps([]);
-      setUiStatus("New image loaded. Click 'Run Code Engine Pipeline' to start processing.");
+      setIrEvaluationResult(null);
+      setIsMatchModalOpen(false);
+      setUiStatus("New image loaded. Click 'Run Code Engine Pipeline' to evaluate.");
     }
   };
 
-  const handleProcessUiPipeline = async () => {
+  // Pipeline execution method supporting IR Evaluation and Direct AI generation
+  const handleProcessUiPipeline = async (forceAi = false) => {
     if (!selectedFile) return;
     setIsUiLoading(true);
     setUiPerformanceMetrics(null);
-    setUiStatus("Uploading source image and queueing pipeline job...");
+    setUiStatus(forceAi ? "Synthesizing code layout with AI Orchestration..." : "Evaluating IR Retrieval against Knowledge Repo...");
 
     const initialSteps = [
       { id: 1, name: "Layout Segmentation (SAM)", status: "processing", duration: null },
       { id: 2, name: "Text Extraction (OCR)", status: "waiting", duration: null },
       { id: 3, name: "Element Color Profiling", status: "waiting", duration: null },
-      { id: 4, name: "Dynamic Memory Search (FAISS)", status: "waiting", duration: null },
+      { id: 4, name: "IR Verification & Alignment", status: "waiting", duration: null },
       { id: 5, name: "Visual Alignment Check (CLIP)", status: "waiting", duration: null },
       { id: 6, name: "Code Synthesis (HTML/Flutter)", status: "waiting", duration: null },
     ];
     setLiveSteps(initialSteps);
 
-    // Map backend stage logs onto the six visible pipeline stages, live.
     const applyLiveProgress = (backendSteps, stageLabel) => {
       const steps = backendSteps || [];
       setLiveSteps(initialSteps.map((step, idx) => {
@@ -249,43 +271,61 @@ function App() {
 
     const formData = new FormData();
     formData.append("file", selectedFile);
+    if (forceAi) formData.append("force_ai", "true");
 
     try {
-      // 1) Submit the job (returns immediately) ...
       const res = await axios.post(`${API}/api/process_ui`, formData, {
         headers: apiHeaders({ "Content-Type": "multipart/form-data" }),
-        timeout: 120000,
+        timeout: 300000,
       });
 
-      // 2) ... then poll it. Keeps every HTTP call far below the 100s proxy cap.
       const job = await pollJob(res.data.job_id, (snapshot) => {
         applyLiveProgress(snapshot.steps, snapshot.stage);
       });
 
       const result = job.result || {};
-      setUiStatus(result.status || "Pipeline Execution Completed");
-      setUiJsonOutput(result.json || result.ui_json || "");
-      setUiFlutterOutput(result.flutter || result.flutter_code || result.flutterOutput || "");
-      setUiHtmlOutput(result.html || result.html_code || result.html_css || result.htmlCssOutput || "");
-      setSamPreview(result.sam_preview ? `data:image/png;base64,${result.sam_preview}` : "");
+      
+      // 1. POPULATE ALL TAB OUTPUTS IMMEDIATELY (NO EARLY RETURN)
+      if (result.sam_preview) setSamPreview(`data:image/png;base64,${result.sam_preview}`);
+      if (result.json || result.ui_json) setUiJsonOutput(result.json || result.ui_json);
 
       const extractedOcr = result.ocr_text || result.ocrText || null;
       setOcrOutput(extractedOcr);
       setColorsOutput(result.colors || []);
-      setSimilarityOutput(result.similarity || result.similarity_logs || result.similarityLogs || "No log generated.");
+      setUiFlutterOutput(result.flutter || result.flutter_code || result.flutterOutput || "");
+      setUiHtmlOutput(result.html || result.html_code || result.html_css || result.htmlCssOutput || "");
+      setSimilarityOutput(result.similarity || result.similarity_logs || result.similarityLogs || "Analysis complete.");
 
-      // Update System Engine and Reasoning from backend
+      // 2. Visual previews & CLIP scores
+      if (result.html_render_preview) {
+        setHtmlRenderPreview(`data:image/png;base64,${result.html_render_preview}`);
+      }
+      setClipSimilarity(result.clip_similarity !== undefined ? result.clip_similarity : null);
+
       if (result.model_engine) {
         setSelectedModelEngine(result.model_engine);
         setModelSelectionReason(result.model_reason || "Automated routing determined by backend inference manager.");
       }
 
-      // Load reconstructed previews and CLIP alignment scores
-      setHtmlRenderPreview(result.html_render_preview ? `data:image/png;base64,${result.html_render_preview}` : "");
-      setClipSimilarity(result.clip_similarity !== undefined ? result.clip_similarity : null);
+      // 3. Set IR Engine Telemetry Data
+      const matchStatus = result.ir_match_status || "NO_MATCH";
+      setIrEvaluationResult({
+        status: matchStatus,
+        relevance: result.relevance_score || 0,
+        coverage: result.coverage_score || 0,
+        unresolved: result.unresolved_requirements || [],
+      });
+
+      // 4. Show non-blocking popup if IR coverage is insufficient and not forced
+      if (!forceAi && (matchStatus === "PARTIAL_MATCH" || matchStatus === "NO_MATCH")) {
+        setIsMatchModalOpen(true);
+        setUiStatus(`IR Engine Flagged: ${matchStatus}. Review outputs or enrich repository.`);
+      } else {
+        setUiStatus(result.status || "Pipeline Execution Completed");
+      }
 
       if (result.performance_metrics) {
-        const backendSteps = result.performance_metrics.steps;
+        const backendSteps = result.performance_metrics.steps || [];
         const mappedSteps = initialSteps.map((step, idx) => {
           const correspondingStage = backendSteps.find(s => s.stage === idx + 1);
           return {
@@ -298,7 +338,6 @@ function App() {
         setUiPerformanceMetrics(result.performance_metrics);
       }
 
-      setActiveUiTab("sam");
     } catch (err) {
       console.error(err);
       setUiStatus(`Error: ${err.response?.data?.detail || err.message || "Pipeline execution failed."}`);
@@ -313,6 +352,25 @@ function App() {
     } finally {
       setIsUiLoading(false);
     }
+  };
+
+  // Popup Action 1: User selects Yes -> Open Knowledge Repo Console
+  const handleDecisionEnrichRepo = () => {
+    setIsMatchModalOpen(false);
+    setIsKnowledgeBaseOpen(true); // Preserves original request & state
+  };
+
+  // Popup Action 2: User selects No -> Continue with AI Orchestration
+  const handleDecisionContinueAi = () => {
+    setIsMatchModalOpen(false);
+    handleProcessUiPipeline(true); // force_ai = true
+  };
+
+  // Auto-rerun retrieval against original request after indexing
+  const handleIngestionCompleteAutoRerun = () => {
+    setIsKnowledgeBaseOpen(false);
+    setUiStatus("Knowledge Repo enriched. Automatically rerunning IR retrieval on original request...");
+    handleProcessUiPipeline(false);
   };
 
   // ==========================================
@@ -471,7 +529,6 @@ function App() {
     const pageLevelJson = createPageLevelJson(pageNode);
 
     try {
-      // Gemini is called through the backend so the API key never ships to the browser.
       const res = await axios.post(`${API}/api/figma/generate`, {
         format: figmaFormat,
         componentName: figmaFileName || pageNode.name || "FigmaExport",
@@ -515,7 +572,7 @@ function App() {
             className={`toggle-btn ${workspace === "screenshot" ? "active" : ""}`}
             onClick={() => setWorkspace("screenshot")}
           >
-             Upload Files
+             Upload Files & IR Engine
           </button>
           <button 
             className={`toggle-btn ${workspace === "figma" ? "active" : ""}`}
@@ -531,9 +588,7 @@ function App() {
         </div>
       </header>
 
-      {/* =======================================================
-          WORKSPACE 1: SCREENSHOT TO CODE RAG PIPELINE
-          ======================================================= */}
+      {/* WORKSPACE 1: SCREENSHOT TO CODE RAG PIPELINE */}
       {workspace === "screenshot" && (
         <main className="workspace-grid" style={{ gridTemplateColumns: "420px 1fr" }}>
           
@@ -546,7 +601,7 @@ function App() {
             {/* Scrollable Container Body Wrapper */}
             <div className="panel-body" style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
               
-              {/* KNOWLEDGE BASE MODAL TRIGGER BUTTON (TOP OF CONTROL PANEL) */}
+              {/* PROACTIVE KNOWLEDGE REPO BUTTON */}
               <button
                 onClick={() => setIsKnowledgeBaseOpen(true)}
                 style={{
@@ -568,7 +623,7 @@ function App() {
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span>📚</span>
-                  <span>View Ingested Knowledge Base</span>
+                  <span>Build / Update Knowledge Repo</span>
                 </div>
                 <span style={{ 
                   background: uiJsonOutput ? "#10b98125" : "#64748b25", 
@@ -578,7 +633,7 @@ function App() {
                   borderRadius: "4px", 
                   fontSize: "10px" 
                 }}>
-                  {uiJsonOutput ? "Ready" : "Empty"}
+                  {uiJsonOutput ? "Ready" : "Enrich"}
                 </span>
               </button>
 
@@ -719,7 +774,6 @@ function App() {
                               {selectedModelEngine}
                             </span>
                             
-                            {/* POPUP TRIGGER BUTTON */}
                             <button
                               onClick={() => setIsEngineModalOpen(true)}
                               style={{
@@ -739,7 +793,6 @@ function App() {
                           </div>
                         </div>
 
-                        {/* Short Selection Reason display */}
                         <div style={{ borderTop: "1px dashed #1e293b", paddingTop: "6px", marginTop: "2px" }}>
                           <span style={{ color: "#f59e0b", fontSize: "10px", fontWeight: "bold", display: "block", marginBottom: "3px" }}>
                             SELECTION REASON & CONTEXT:
@@ -808,7 +861,7 @@ function App() {
               )}
 
               <button
-                onClick={handleProcessUiPipeline}
+                onClick={() => handleProcessUiPipeline(false)}
                 disabled={isUiLoading || !selectedFile}
                 className={`process-button ${isUiLoading ? "btn-loading" : ""}`}
                 style={{ flexShrink: 0 }}
@@ -831,7 +884,7 @@ function App() {
               <button className={`tab-btn ${activeUiTab === "sam" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("sam")}> SAM Segmentation</button>
               <button className={`tab-btn ${activeUiTab === "ocr" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("ocr")}>OCR Text</button>
               <button className={`tab-btn ${activeUiTab === "colors" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("colors")}> Colors</button>
-              <button className={`tab-btn ${activeUiTab === "similarity" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("similarity")}> Similarity</button>
+              <button className={`tab-btn ${activeUiTab === "similarity" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("similarity")}> Similarity & IR</button>
               <button className={`tab-btn ${activeUiTab === "json" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("json")}> Layout JSON</button>
               <button className={`tab-btn ${activeUiTab === "flutter" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("flutter")}> Flutter Output</button>
               <button className={`tab-btn ${activeUiTab === "html" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("html")}> HTML / CSS Output</button>
@@ -873,7 +926,7 @@ function App() {
 
               {activeUiTab === "colors" && (
                 <div className="viewport-content centered-flex">
-                  {colorsOutput.length > 0 ? (
+                  {colorsOutput && colorsOutput.length > 0 ? (
                     <div className="colors-grid">
                       {colorsOutput.map((color, idx) => (
                         <div key={idx} className="color-swatch-card">
@@ -899,6 +952,40 @@ function App() {
                   {similarityOutput ? (
                     <div className="similarity-container" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                       
+                      {/* IR Engine Status & Relevance Card */}
+                      {irEvaluationResult && (
+                        <div style={{
+                          background: "#1e293b",
+                          border: "1px solid #334155",
+                          borderRadius: "8px",
+                          padding: "16px"
+                        }}>
+                          <h4 style={{ color: "#38bdf8", margin: "0 0 10px 0" }}>IR Engine Evaluation Telemetry</h4>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+                            <div>
+                              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>STATUS</span>
+                              <div style={{ fontWeight: "bold", color: irEvaluationResult.status === "FULL_MATCH" ? "#34d399" : "#f59e0b" }}>{irEvaluationResult.status}</div>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>RELEVANCE SCORE</span>
+                              <div style={{ fontWeight: "bold", color: "#38bdf8" }}>{Math.round(irEvaluationResult.relevance * 100)}%</div>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>COVERAGE SCORE</span>
+                              <div style={{ fontWeight: "bold", color: "#38bdf8" }}>{Math.round(irEvaluationResult.coverage * 100)}%</div>
+                            </div>
+                          </div>
+                          {irEvaluationResult.unresolved && irEvaluationResult.unresolved.length > 0 && (
+                            <div style={{ borderTop: "1px dashed #334155", paddingTop: "8px" }}>
+                              <span style={{ fontSize: "10px", color: "#f87171", fontWeight: "bold" }}>UNRESOLVED REQUIREMENTS:</span>
+                              <ul style={{ margin: "4px 0 0 16px", padding: 0, fontSize: "11px", color: "#cbd5e1" }}>
+                                {irEvaluationResult.unresolved.map((u, i) => <li key={i}>{u}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* CLIP Similarity Score Progress Tracker */}
                       {clipSimilarity !== null && (
                         <div className="visual-alignment-metrics" style={{
@@ -1242,6 +1329,88 @@ function App() {
       )}
 
       {/* =======================================================
+          NON-BLOCKING MODAL: INSUFFICIENT RETRIEVAL COVERAGE
+          ======================================================= */}
+      {isMatchModalOpen && (
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 10000
+          }}
+        >
+          <div 
+            style={{
+              backgroundColor: "#0f172a",
+              border: "1px solid #38bdf8",
+              borderRadius: "10px",
+              width: "500px",
+              maxWidth: "92vw",
+              padding: "24px",
+              boxShadow: "0 20px 45px rgba(0, 0, 0, 0.8)",
+              color: "#f8fafc"
+            }}
+          >
+            <h3 style={{ margin: "0 0 12px 0", color: "#f59e0b", fontSize: "16px" }}>
+              ⚠️ Insufficient Retrieval Coverage
+            </h3>
+            
+            <p style={{ fontSize: "13px", lineHeight: "1.5", color: "#cbd5e1" }}>
+              The Knowledge Repo does not contain enough matching evidence for this request.
+              <br /><br />
+              <strong>IR Status:</strong> {irEvaluationResult?.status}
+              <br />
+              <strong>Relevance Score:</strong> {Math.round((irEvaluationResult?.relevance || 0) * 100)}% | <strong>Coverage:</strong> {Math.round((irEvaluationResult?.coverage || 0) * 100)}%
+              <br /><br />
+              Would you like to build or enrich the Knowledge Repo before proceeding?
+            </p>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
+              <button
+                onClick={handleDecisionContinueAi}
+                style={{
+                  background: "#334155",
+                  border: "none",
+                  color: "#cbd5e1",
+                  borderRadius: "6px",
+                  padding: "9px 15px",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  cursor: "pointer"
+                }}
+              >
+                No, Continue with AI
+              </button>
+
+              <button
+                onClick={handleDecisionEnrichRepo}
+                style={{
+                  background: "#0284c7",
+                  border: "none",
+                  color: "#ffffff",
+                  borderRadius: "6px",
+                  padding: "9px 15px",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  cursor: "pointer"
+                }}
+              >
+                Yes, Build/Update Repo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =======================================================
           MODAL 1: INGESTED KNOWLEDGE BASE INSPECTOR
           ======================================================= */}
       {isKnowledgeBaseOpen && (
@@ -1257,7 +1426,7 @@ function App() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            zIndex: 10000
+            zIndex: 10001
           }}
           onClick={() => setIsKnowledgeBaseOpen(false)}
         >

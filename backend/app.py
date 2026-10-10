@@ -74,7 +74,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import httpx
 
 # --- SERVER CONFIGURATION (all env-driven) ---------------------------------
@@ -83,13 +83,12 @@ DEVICE = os.environ.get("DEVICE") or ("cuda" if torch.cuda.is_available() else "
 
 PORT = int(os.environ.get("PORT", "8000"))
 # Absolute base used when returning asset URLs to the frontend
-# (e.g. https://<pod>-8000.proxy.runpod.net in production)
 PUBLIC_BASE_URL = (os.environ.get("PUBLIC_BASE_URL") or f"http://localhost:{PORT}").rstrip("/")
 # Comma separated allowlist, e.g. "https://myapp.netlify.app,https://myapp.com"
 ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
 # When set, every /api/* route requires an "x-api-key" header
 API_KEY = os.environ.get("API_KEY", "").strip()
-# Model tier used for screenshot -> code synthesis (see generate_code_with_gemini_model)
+# Model tier used for screenshot -> code synthesis
 CODE_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 
 # Model-heavy jobs run one at a time: models, FAISS and ChromaDB are shared globals
@@ -97,6 +96,9 @@ PIPELINE_LOCK = threading.Lock()
 # In-memory job registry: job_id -> {status, stage, steps, progress, result, error}
 JOBS = {}
 JOBS_MAX_HISTORY = 50
+
+# Knowledge Repo revision tracker for automatic reruns after indexing
+REPO_REVISION = 1
 
 # Initialize Models and databases
 text_model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -222,6 +224,7 @@ def add_to_index(img_path, filename):
         memory_metadata.append(filename)
 
 def save_to_memory(img_np, ui_json_str, flutter, html, ocr_texts, masks):
+    global REPO_REVISION
     try:
         embedding = create_composite_embedding(img_np, ocr_texts, masks)
         timestamp = str(time.time())
@@ -242,7 +245,8 @@ def save_to_memory(img_np, ui_json_str, flutter, html, ocr_texts, masks):
                 "filename": f"{base_name}.png"
             }]
         )
-        print(f"INFO: Successfully saved image and codes to ChromaDB vector store.")
+        REPO_REVISION += 1
+        print(f"INFO: Successfully saved image and codes to ChromaDB vector store (Rev: {REPO_REVISION}).")
         return base_name
     except Exception as db_err:
         print(f"WARNING: save_to_memory encountered an error: {str(db_err)}")
@@ -288,6 +292,86 @@ def calculate_hybrid_similarity(new_ir, candidate_ir, new_img, candidate_img):
     structural_score = 1.0 - (abs(new_nodes - cand_nodes) / max(new_nodes, cand_nodes, 1))
     score = (visual_score * 0.3) + (structural_score * 0.4) + (0.8 * 0.3)
     return score * 100
+
+# --- ENHANCED IR EVALUATION & COVERAGE ENGINE ---
+def evaluate_ir_coverage_and_relevance(query_emb: np.ndarray, ui_json_str: str) -> Dict[str, Any]:
+    """
+    Evaluates multi-modal relevance and requirement coverage against the Knowledge Repo.
+    Returns normalized scores (0.0 to 1.0), classification, and unresolved requirements.
+    """
+    try:
+        current_ir = json.loads(ui_json_str) if isinstance(ui_json_str, str) else ui_json_str
+    except Exception:
+        current_ir = {}
+
+    components = current_ir.get("root_components", [])
+    total_elements = len(components)
+    req_types = [c.get("type", "container") for c in components]
+
+    # Verify if collection has indexed data
+    count = collection.count()
+    if count == 0:
+        return {
+            "relevance_score": 0.0,
+            "coverage_score": 0.0,
+            "classification": "NO_MATCH",
+            "candidate": None,
+            "unresolved_requirements": req_types if req_types else ["UI Components Blueprint"],
+            "summary": "Knowledge Repo has 0 indexed components."
+        }
+
+    results = collection.query(query_embeddings=[query_emb.tolist()], n_results=1)
+
+    if not results or not results.get('metadatas') or not results['metadatas'][0]:
+        return {
+            "relevance_score": 0.0,
+            "coverage_score": 0.0,
+            "classification": "NO_MATCH",
+            "candidate": None,
+            "unresolved_requirements": req_types,
+            "summary": "No matching candidate vectors found in Knowledge Repo."
+        }
+
+    candidate = results['metadatas'][0][0]
+    distance = results.get('distances', [[0.2]])[0][0] if results.get('distances') else 0.2
+    
+    # Normalized Cosine Relevance Score: [0.0 - 1.0]
+    relevance_score = max(0.0, min(1.0, 1.0 - (float(distance) / 2.0)))
+    
+    # Requirement coverage evaluation based on actual component structure
+    candidate_json = json.loads(candidate.get('json_data', '{}'))
+    candidate_elements = candidate_json.get("root_components", [])
+    candidate_types = [c.get("type", "container") for c in candidate_elements]
+    
+    unresolved = []
+    matched_count = 0
+    for req in req_types:
+        if req in candidate_types:
+            matched_count += 1
+        else:
+            unresolved.append(f"Unmatched element type: {req}")
+
+    coverage_score = float(matched_count / max(total_elements, 1))
+    coverage_score = max(0.0, min(1.0, coverage_score))
+
+    # Threshold Classification:
+    # Full match: Relevance >= 0.85 AND Coverage >= 0.90
+    if relevance_score >= 0.85 and coverage_score >= 0.90:
+        classification = "FULL_MATCH"
+    elif relevance_score >= 0.60 or coverage_score >= 0.50:
+        classification = "PARTIAL_MATCH"
+    else:
+        classification = "NO_MATCH"
+
+    return {
+        "relevance_score": round(relevance_score, 3),
+        "coverage_score": round(coverage_score, 3),
+        "classification": classification,
+        "candidate": candidate,
+        "unresolved_requirements": unresolved,
+        "repo_revision": REPO_REVISION,
+        "summary": f"IR Engine: {classification} (Rel: {round(relevance_score*100, 1)}%, Cov: {round(coverage_score*100, 1)}%)"
+    }
 
 def step_1_sam(input_img):
     print("DEBUG: Starting SAM segmentation...")
@@ -404,7 +488,7 @@ def step_3_color(masks, img_np):
 
 # --- GEMINI DYNAMIC MODEL GENERATION STAGE ---
 
-def generate_code_with_gemini_model(model_name: str, ui_json_str: str) -> tuple:
+def generate_code_with_gemini_model(model_name: str, ui_json_str: str, unresolved: list = None) -> tuple:
     """
     Synthesizes responsive HTML/CSS and Flutter layout code blocks using the specified Gemini model tier.
     """
@@ -412,6 +496,7 @@ def generate_code_with_gemini_model(model_name: str, ui_json_str: str) -> tuple:
         print("CRITICAL WARNING: Gemini API Key has not been configured in the environment.")
         return "/* Code synthesis failed: Missing Gemini API Key. */", "<!-- Code synthesis failed: Missing Gemini API Key -->"
         
+    unresolved_note = f"\nUnresolved specifications to satisfy:\n{', '.join(unresolved)}" if unresolved else ""
     system_instruction = (
         "You are an expert Frontend and Flutter Engineer. Your input is an Enriched Hierarchical DesignIR JSON.\n\n"
         "RULES FOR CONVERTING JSON TO CODE:\n"
@@ -427,7 +512,7 @@ def generate_code_with_gemini_model(model_name: str, ui_json_str: str) -> tuple:
         "   - Wrap HTML/CSS code in [HTML_START]...[HTML_END]\n"
     )
     user_prompt = (
-        f"Translate the following DesignIR JSON into a cohesive Flutter Widget and a responsive HTML page:\n\n"
+        f"Translate the following DesignIR JSON into a cohesive Flutter Widget and a responsive HTML page:{unresolved_note}\n\n"
         f"DesignIR JSON:\n{ui_json_str}"
     )
 
@@ -527,8 +612,6 @@ def step_4_and_orchestrate(img_np, ui_json_str, texts, masks):
         reason = f"Very high similarity ({round(similarity, 1)}%). Fast compilation with Gemini 3.5 Flash engine."
         
     print(f"Routing logic: selected model '{model_name}' for score {round(similarity, 1)}%")
-    
-    # Generate the flutter and html code (THIS LINE WAS MISSING/SKIPPED)
     flutter, html = generate_code_with_gemini_model(model_name, ui_json_str)
     
     try:
@@ -779,6 +862,8 @@ def health():
         "device": DEVICE,
         "models_loaded": True,
         "active_jobs": active_jobs,
+        "repo_revision": REPO_REVISION,
+        "indexed_components": collection.count(),
         "gemini_configured": bool(GEMINI_API_KEY and GEMINI_AVAILABLE),
     }
 
@@ -789,10 +874,6 @@ async def get_ingestion_status(_=Depends(require_api_key)):
     return ingestion_status
 
 # --- JOB RUNTIME -----------------------------------------------------------
-# Heavy work is executed in a worker thread and polled by the client.
-# The Runpod/Cloudflare HTTP proxy kills any single request after ~100s, so no
-# endpoint may block for longer than that.
-
 def _prune_jobs():
     if len(JOBS) <= JOBS_MAX_HISTORY:
         return
@@ -807,7 +888,7 @@ def _create_job(kind: str) -> dict:
     job = {
         "job_id": uuid.uuid4().hex[:12],
         "kind": kind,
-        "status": "queued",          # queued | running | completed | failed
+        "status": "queued",
         "stage": "Queued for execution",
         "steps": [],
         "progress": {"current_file": "", "processed": 0, "total": 0},
@@ -837,7 +918,6 @@ def _spawn_job(job: dict, target, *args):
 
 def _job_view(job: dict) -> dict:
     view = dict(job)
-    # Base64 previews are large: only ship the payload with the final response
     if job["status"] != "completed":
         view = {k: v for k, v in view.items() if k != "result"}
     return view
@@ -849,10 +929,8 @@ async def get_job(job_id: str, _=Depends(require_api_key)):
         raise HTTPException(status_code=404, detail="Unknown job id")
     return _job_view(job)
 
-
 class _StageLog(list):
     """Stage log that mirrors itself into the polled job payload on every append."""
-
     def __init__(self, job):
         super().__init__()
         self._job = job
@@ -862,10 +940,9 @@ class _StageLog(list):
         self._job["steps"] = [dict(s) for s in self]
         self._job["stage"] = f"Stage {entry.get('stage', '?')}: {entry.get('name', '')}"
 
-
 # --- Process UI Endpoint ---
-def _process_ui_pipeline(job, contents: bytes) -> dict:
-    """Full screenshot pipeline. Runs inside a worker thread (never on the event loop)."""
+def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_only: bool = False) -> dict:
+    """Full screenshot pipeline. Runs inside a worker thread."""
     try:
         first_kut_logs = _StageLog(job)
         total_start_time = time.perf_counter()
@@ -915,21 +992,72 @@ def _process_ui_pipeline(job, contents: bytes) -> dict:
             "meta": f"Formulated embedding coordinates: dim={len(comp_emb)}."
         })
         
-        # --- STAGE 4 & 5: INTELLIGENT ORCHESTRATION & SYNTHESIS ---
+        # --- STAGE 4: IR ENGINE EVALUATION & CLASSIFICATION ---
         t_start = time.perf_counter()
-        flutter, html, similarity_logs, model_used, reasoning = step_4_and_orchestrate(raw_np, ui_json, texts, masks)
-        cache_hit = ("Cache Hit" in similarity_logs)
+        ir_eval = evaluate_ir_coverage_and_relevance(comp_emb, ui_json)
+        match_status = ir_eval["classification"]
+        relevance_score = ir_eval["relevance_score"]
+        coverage_score = ir_eval["coverage_score"]
+        unresolved = ir_eval["unresolved_requirements"]
+        candidate = ir_eval["candidate"]
+
         t_duration = time.perf_counter() - t_start
         first_kut_logs.append({
             "stage": 4,
+            "name": "IR Retrieval & Verification",
+            "desc": ir_eval["summary"],
+            "duration": round(t_duration, 3),
+            "status": "Success",
+            "meta": f"Result: {match_status} | Rel: {int(relevance_score*100)}% | Cov: {int(coverage_score*100)}%"
+        })
+
+        # Check if evaluation-only mode or needs popup prompt before AI generation
+        if evaluate_only:
+            return {
+                "status": f"IR Evaluation: {match_status}",
+                "ir_match_status": match_status,
+                "relevance_score": relevance_score,
+                "coverage_score": coverage_score,
+                "unresolved_requirements": unresolved,
+                "json": ui_json,
+                "sam_preview": numpy_to_base64(viz),
+                "performance_metrics": {
+                    "steps": first_kut_logs,
+                    "total_duration_sec": round(time.perf_counter() - total_start_time, 3)
+                }
+            }
+
+        # --- STAGE 5: INTELLIGENT ORCHESTRATION & SYNTHESIS ---
+        t_start = time.perf_counter()
+        if match_status == "FULL_MATCH" and candidate and not force_ai:
+            flutter = candidate.get("flutter_code", "")
+            html = candidate.get("html_code", "")
+            model_used = "Knowledge-Repo-VectorDB"
+            reasoning = f"Certified Full Match (Relevance: {round(relevance_score*100, 1)}%, Coverage: {round(coverage_score*100, 1)}%). Retrieved pre-built certified components."
+            similarity_logs = f"Cache Hit | Similarity Score: {round(relevance_score*100, 1)}%"
+            cache_hit = True
+        else:
+            model_used = CODE_MODEL
+            reasoning = f"Routed to {CODE_MODEL} based on match status: {match_status} (Relevance: {round(relevance_score*100, 1)}%, Coverage: {round(coverage_score*100, 1)}%)."
+            flutter, html = generate_code_with_gemini_model(model_used, ui_json, unresolved)
+            similarity_logs = f"Synthesized with Gemini ({model_used}) | Match: {match_status}"
+            cache_hit = False
+            try:
+                save_to_memory(raw_np, ui_json, flutter, html, texts, masks)
+            except Exception as save_err:
+                print(f"Database Cache Write Warning: {save_err}")
+
+        t_duration = time.perf_counter() - t_start
+        first_kut_logs.append({
+            "stage": 5,
             "name": "Intelligent Orchestration",
             "desc": f"Routing: {model_used}. Reasoning: {reasoning}",
             "duration": round(t_duration, 3),
             "status": "Success",
-            "meta": f"Result: {similarity_logs.split('|')[-1].strip()} | Engine: {model_used}"
+            "meta": f"Engine: {model_used}"
         })
         
-        # --- NEW STAGE: HTML VISUAL RENDERING AND CLIP ALIGNMENT CHECK ---
+        # --- STAGE 6: HTML VISUAL RENDERING AND CLIP ALIGNMENT CHECK ---
         t_start = time.perf_counter()
         rendered_np = render_html_to_image(html, ui_json)
         
@@ -940,28 +1068,12 @@ def _process_ui_pipeline(job, contents: bytes) -> dict:
         t_duration = time.perf_counter() - t_start
         
         first_kut_logs.append({
-            "stage": 5,
+            "stage": 6,
             "name": "Visual Alignment Check",
             "desc": "HTML design rendered and evaluated using CLIP against source.",
             "duration": round(t_duration, 3),
             "status": "Success",
             "meta": f"Calculated visual reconstruction alignment score: {clip_visual_similarity}%"
-        })
-        
-        # --- STAGE 6: RECONCILIATION & VALIDATION ---
-        t_start = time.perf_counter()
-        if flutter.startswith("/*") and flutter.endswith("*/") and len(flutter) < 100:
-            validation_msg = "Validation warning: Check standard output layout specifications."
-        else:
-            validation_msg = "Passed format compliance checks."
-        t_duration = time.perf_counter() - t_start
-        first_kut_logs.append({
-            "stage": 6,
-            "name": "Reconciliation & Validation",
-            "desc": "Comparing source blueprint with candidate output files for structural compliance.",
-            "duration": round(t_duration, 3),
-            "status": "Success",
-            "meta": validation_msg
         })
         
         # --- STAGE 7: PROMOTION GOVERNANCE ---
@@ -993,6 +1105,10 @@ def _process_ui_pipeline(job, contents: bytes) -> dict:
         
         return {
             "status": "Completed FirstKutAI Pipeline Integration",
+            "ir_match_status": match_status,
+            "relevance_score": relevance_score,
+            "coverage_score": coverage_score,
+            "unresolved_requirements": unresolved,
             "model_used": model_used,
             "model_engine": model_used,
             "reasoning": reasoning,
@@ -1032,18 +1148,19 @@ def _process_ui_pipeline(job, contents: bytes) -> dict:
         raise RuntimeError(f"Visual code synthesis pipeline failed: {str(e)}") from e
 
 @app.post("/api/process_ui")
-async def process_ui(file: UploadFile = File(...), _=Depends(require_api_key)):
-    """Starts the screenshot pipeline as a background job and returns its job_id.
-
-    Clients poll GET /api/jobs/{job_id}. No request ever blocks for the whole
-    pipeline, which keeps every call well under the Runpod proxy 100s limit.
-    """
+async def process_ui(
+    file: UploadFile = File(...),
+    force_ai: Optional[bool] = Form(False),
+    evaluate_only: Optional[bool] = Form(False),
+    _=Depends(require_api_key)
+):
+    """Starts the screenshot pipeline as a background job and returns its job_id."""
     contents = await file.read()
     if not contents:
         raise HTTPException(status_code=400, detail="Empty file upload")
 
     job = _create_job("process_ui")
-    _spawn_job(job, _process_ui_pipeline, contents)
+    _spawn_job(job, _process_ui_pipeline, contents, force_ai, evaluate_only)
     return {
         "job_id": job["job_id"],
         "status": job["status"],
@@ -1357,7 +1474,6 @@ async def extract_figma_assets(payload: AssetExtractionPayload, _=Depends(requir
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image extraction processing failed: {str(e)}")
 
-
 FIGMA_CODE_MODEL = os.environ.get("FIGMA_GEMINI_MODEL", "gemini-1.5-flash")
 
 def _strip_code_fences(text: str) -> str:
@@ -1371,10 +1487,7 @@ def _strip_code_fences(text: str) -> str:
 
 @app.post("/api/figma/generate")
 def figma_generate(payload: FigmaGeneratePayload, _=Depends(require_api_key)):
-    """Server-side Gemini refinement for Figma pages.
-
-    Keeps the Gemini key on the server: the browser never sees it.
-    """
+    """Server-side Gemini refinement for Figma pages."""
     if not GEMINI_AVAILABLE:
         raise HTTPException(status_code=503, detail="google-generativeai is not installed on the server")
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_API_KEY_HERE":
@@ -1404,7 +1517,6 @@ def figma_generate(payload: FigmaGeneratePayload, _=Depends(require_api_key)):
         raise HTTPException(status_code=502, detail="Gemini returned an empty response")
 
     return {"code": code, "model": FIGMA_CODE_MODEL}
-
 
 if __name__ == "__main__":
     import uvicorn
