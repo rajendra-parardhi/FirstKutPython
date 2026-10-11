@@ -25,16 +25,16 @@ function App() {
   const [uiStatus, setUiStatus] = useState("System Ready. Please upload a UI layout screenshot to begin.");
   const [uiPerformanceMetrics, setUiPerformanceMetrics] = useState(null); 
   
-  // Model Engine & Rationale State + Popup Modal Control
+  // Model Engine & Elaborate Telemetry State + Popup Modal Control
   const [selectedModelEngine, setSelectedModelEngine] = useState("gemini-3.5-flash");
   const [modelSelectionReason, setModelSelectionReason] = useState(
-    "Default configuration: Sub-second visual parsing and responsive DOM generation with Gemini 3.5 Flash."
+    "Synthesis Engine: Multi-Modal AST layout parsing and responsive DOM generation with Gemini 3.5 Flash."
   );
   const [isEngineModalOpen, setIsEngineModalOpen] = useState(false);
 
-  // Knowledge Base Modal State
+  // Knowledge Base Modal State (With Local SQLite / SQL support)
   const [isKnowledgeBaseOpen, setIsKnowledgeBaseOpen] = useState(false);
-  const [kbTab, setKbTab] = useState("zip");
+  const [kbTab, setKbTab] = useState("zip"); // "zip" | "doc" | "github" | "sql"
   const [kbLoading, setKbLoading] = useState(false);
   const [kbMessage, setKbMessage] = useState(null);
   const [githubUrl, setGithubUrl] = useState("");
@@ -130,13 +130,13 @@ function App() {
     }
   };
 
-  // KB File Upload with automatic IR re-evaluation trigger
+  // KB File Upload with automatic IR re-evaluation trigger (supports ZIP, DOC, and local SQL/DB)
   const handleKbFileUpload = async (event, endpoint) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setKbLoading(true);
-    setKbMessage({ type: "info", text: `Uploading ${file.name}...` });
+    setKbMessage({ type: "info", text: `Uploading and analyzing ${file.name}...` });
     const formData = new FormData();
     formData.append("file", file);
 
@@ -150,15 +150,22 @@ function App() {
         if (progress?.total) {
           setKbMessage({
             type: "info",
-            text: `${progress.current_file || "Indexing"}: ${progress.processed || 0} of ${progress.total}`,
+            text: `${progress.current_file || "Indexing Knowledge"}: ${progress.processed || 0} of ${progress.total}`,
           });
         }
       });
       const result = job.result || {};
       const details = result.details || {};
-      const message = endpoint === "ingest_zip"
-        ? `Indexed ${details.processed || 0} images${details.errors?.length ? `; ${details.errors.length} failed` : ""}.`
-        : `Indexed ${result.chunks_stored || 0} document chunks.`;
+      
+      let message = "";
+      if (endpoint === "ingest_zip") {
+        message = `Indexed ${details.processed || 0} images${details.errors?.length ? `; ${details.errors.length} failed` : ""}.`;
+      } else if (endpoint === "ingest_sql") {
+        message = `Indexed ${result.chunks_stored || 0} SQL schema/table chunks into local vector store.`;
+      } else {
+        message = `Indexed ${result.chunks_stored || 0} document chunks.`;
+      }
+
       setKbMessage({ type: "success", text: `${message} Auto-rerunning IR retrieval on your request...` });
 
       // Automatically rerun IR retrieval against original active request
@@ -253,8 +260,9 @@ function App() {
       { id: 2, name: "Text Extraction (OCR)", status: "waiting", duration: null },
       { id: 3, name: "Element Color Profiling", status: "waiting", duration: null },
       { id: 4, name: "IR Verification & Alignment", status: "waiting", duration: null },
-      { id: 5, name: "Visual Alignment Check (CLIP)", status: "waiting", duration: null },
-      { id: 6, name: "Code Synthesis (HTML/Flutter)", status: "waiting", duration: null },
+      { id: 5, name: "Intelligent Synthesis Orchestration", status: "waiting", duration: null },
+      { id: 6, name: "Visual Alignment Check (CLIP)", status: "waiting", duration: null },
+      { id: 7, name: "Codebase Promotion Governance", status: "waiting", duration: null },
     ];
     setLiveSteps(initialSteps);
 
@@ -285,7 +293,7 @@ function App() {
 
       const result = job.result || {};
       
-      // 1. POPULATE ALL TAB OUTPUTS IMMEDIATELY (NO EARLY RETURN)
+      // 1. POPULATE ALL TAB OUTPUTS IMMEDIATELY
       if (result.sam_preview) setSamPreview(`data:image/png;base64,${result.sam_preview}`);
       if (result.json || result.ui_json) setUiJsonOutput(result.json || result.ui_json);
 
@@ -304,7 +312,7 @@ function App() {
 
       if (result.model_engine) {
         setSelectedModelEngine(result.model_engine);
-        setModelSelectionReason(result.model_reason || "Automated routing determined by backend inference manager.");
+        setModelSelectionReason(result.model_reason || "Automated multi-modal routing determined by synthesis orchestrator.");
       }
 
       // 3. Set IR Engine Telemetry Data
@@ -357,13 +365,13 @@ function App() {
   // Popup Action 1: User selects Yes -> Open Knowledge Repo Console
   const handleDecisionEnrichRepo = () => {
     setIsMatchModalOpen(false);
-    setIsKnowledgeBaseOpen(true); // Preserves original request & state
+    setIsKnowledgeBaseOpen(true);
   };
 
   // Popup Action 2: User selects No -> Continue with AI Orchestration
   const handleDecisionContinueAi = () => {
     setIsMatchModalOpen(false);
-    handleProcessUiPipeline(true); // force_ai = true
+    handleProcessUiPipeline(true);
   };
 
   // Auto-rerun retrieval against original request after indexing
@@ -744,7 +752,7 @@ function App() {
                         );
                       })}
 
-                      {/* SYSTEM ENGINE BAR WITH POPUP TRIGGER */}
+                      {/* SYSTEM ENGINE BAR WITH ELABORATED TELEMETRY */}
                       <div 
                         style={{ 
                           marginTop: "12px", 
@@ -788,14 +796,14 @@ function App() {
                               }}
                               title="Click to view full Engine details"
                             >
-                              🔍 View
+                              🔍 View Engine Details
                             </button>
                           </div>
                         </div>
 
                         <div style={{ borderTop: "1px dashed #1e293b", paddingTop: "6px", marginTop: "2px" }}>
                           <span style={{ color: "#f59e0b", fontSize: "10px", fontWeight: "bold", display: "block", marginBottom: "3px" }}>
-                            SELECTION REASON & CONTEXT:
+                            ELABORATED ARCHITECTURAL CONTEXT:
                           </span>
                           <p style={{ color: "#cbd5e1", fontSize: "10.5px", lineHeight: "1.4", margin: 0 }}>
                             {modelSelectionReason}
@@ -1411,7 +1419,7 @@ function App() {
       )}
 
       {/* =======================================================
-          MODAL 1: INGESTED KNOWLEDGE BASE INSPECTOR
+          MODAL 1: INGESTED KNOWLEDGE BASE INSPECTOR (WITH SQL DB)
           ======================================================= */}
       {isKnowledgeBaseOpen && (
         <div 
@@ -1467,8 +1475,13 @@ function App() {
               </button>
             </div>
 
-            <div role="tablist" aria-label="Knowledge source" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "8px" }}>
-              {[["zip", "UI Images"], ["doc", "Documents"], ["github", "GitHub Repo"]].map(([tab, label]) => (
+            <div role="tablist" aria-label="Knowledge source" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "8px" }}>
+              {[
+                ["zip", "UI Images"], 
+                ["doc", "Documents"], 
+                ["github", "GitHub Repo"],
+                ["sql", "Local SQL DB"]
+              ].map(([tab, label]) => (
                 <button
                   key={tab}
                   type="button"
@@ -1505,6 +1518,18 @@ function App() {
                   Design specifications (.pdf, .xlsx, .xls, .csv)
                 </label>
                 <input id="kb-document" type="file" accept=".pdf,.xlsx,.xls,.csv" disabled={kbLoading} onChange={(event) => handleKbFileUpload(event, "ingest_doc")} />
+              </div>
+            )}
+
+            {kbTab === "sql" && (
+              <div>
+                <label htmlFor="kb-sql" style={{ display: "block", marginBottom: "6px", color: "#cbd5e1", fontSize: "12px" }}>
+                  Local Database / Schemas (.sqlite, .db, .sql dump)
+                </label>
+                <input id="kb-sql" type="file" accept=".sqlite,.db,.sqlite3,.sql" disabled={kbLoading} onChange={(event) => handleKbFileUpload(event, "ingest_sql")} />
+                <p style={{ margin: "6px 0 0 0", fontSize: "11px", color: "#94a3b8", lineHeight: "1.4" }}>
+                  💡 <strong>Local SQLite Advantage:</strong> Zero external database setup needed. Automatically indexes tables, DDL schemas, foreign key definitions, and row samples into ChromaDB.
+                </p>
               </div>
             )}
 
@@ -1626,7 +1651,7 @@ function App() {
       )}
 
       {/* =======================================================
-          MODAL 2: SYNTHESIS ENGINE DETAILS POPUP MODAL
+          MODAL 2: SYNTHESIS ENGINE DETAILS (ELABORATED TELEMETRY)
           ======================================================= */}
       {isEngineModalOpen && (
         <div 
@@ -1650,8 +1675,8 @@ function App() {
               backgroundColor: "#0f172a",
               border: "1px solid #334155",
               borderRadius: "10px",
-              width: "480px",
-              maxWidth: "90vw",
+              width: "560px",
+              maxWidth: "92vw",
               padding: "24px",
               boxShadow: "0 20px 40px rgba(0, 0, 0, 0.6)",
               display: "flex",
@@ -1664,7 +1689,7 @@ function App() {
             {/* Modal Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #334155", paddingBottom: "12px" }}>
               <h3 style={{ margin: 0, fontSize: "16px", color: "#38bdf8", display: "flex", alignItems: "center", gap: "8px" }}>
-                <span>⚡</span> Synthesis Engine Telemetry
+                <span>⚡</span> Synthesis Engine Deep Telemetry & Architecture
               </h3>
               <button 
                 onClick={() => setIsEngineModalOpen(false)}
@@ -1684,7 +1709,7 @@ function App() {
             {/* Engine Name */}
             <div>
               <span style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: "bold" }}>
-                Selected Model Tier
+                Active Model Tier & Engine
               </span>
               <div style={{ 
                 marginTop: "6px",
@@ -1701,22 +1726,33 @@ function App() {
               </div>
             </div>
 
-            {/* Context & Reasoning */}
+            {/* Elaborated Context & Description */}
             <div>
               <span style={{ fontSize: "11px", color: "#f59e0b", textTransform: "uppercase", fontWeight: "bold" }}>
-                Selection Reason & Routing Context
+                Elaborated Synthesis Pipeline Description
               </span>
               <div style={{ 
                 marginTop: "6px",
                 padding: "12px", 
                 backgroundColor: "#1e293b", 
-                borderRadius: "6px",
-                border: "1px solid #334155",
-                color: "#cbd5e1",
-                fontSize: "12px",
+                borderRadius: "6px", 
+                border: "1px solid #334155", 
+                color: "#cbd5e1", 
+                fontSize: "12px", 
                 lineHeight: "1.6"
               }}>
-                {modelSelectionReason}
+                <p style={{ margin: "0 0 8px 0" }}>
+                  <strong>Dynamic Multi-Modal Orchestration:</strong> The Synthesis Engine couples <em>Segment Anything (SAM)</em> layout decomposition with <em>EasyOCR</em> typography mapping, <em>Nemotron-3</em> layout vectors, and <em>CLIP ViT-B/32</em> visual alignment.
+                </p>
+                <p style={{ margin: "0 0 8px 0" }}>
+                  <strong>Hierarchical DesignIR Mapping:</strong> Instead of guessing code from pixel grids, the engine parses bounding-box coordinates into an enriched AST container tree. It resolves parent-child containment, responsive margins, and semantic element types (containers, buttons, inputs, labels).
+                </p>
+                <p style={{ margin: "0 0 8px 0" }}>
+                  <strong>Local Knowledge Integration:</strong> Searches the indexed ChromaDB knowledge base (UI components, specifications, documents, and local SQL schemas) before invoking generative models, avoiding hallucination and promoting verified enterprise code.
+                </p>
+                <div style={{ borderTop: "1px dashed #334155", paddingTop: "8px", marginTop: "8px", color: "#38bdf8" }}>
+                  <strong>Active Rationale:</strong> {modelSelectionReason}
+                </div>
               </div>
             </div>
 
