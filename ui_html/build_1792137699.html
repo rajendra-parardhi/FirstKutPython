@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In Module</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f4f7fa;
+      color: #333333;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background-color: #007bdc;
+      height: 77px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    header h1 {
+      color: #ffffff;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 32px 16px;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      max-width: 638px;
+      height: 380px;
+    }
+
+    /* Welcome Banner (id: 8) */
+    .welcome-card {
+      position: absolute;
+      left: 63px;
+      top: 20px;
+      width: 260px;
+      height: 242px;
+      background-color: #1171bf;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      z-index: 1;
+    }
+
+    .welcome-card .accent-tag {
+      width: 21px;
+      height: 14px;
+      background-color: #88b7d8;
+      border-radius: 2px;
+      margin-bottom: 20px;
+    }
+
+    .welcome-card h2 {
+      color: #ffffff;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .welcome-card p {
+      color: #e0f0ff;
+      font-size: 0.95rem;
+    }
+
+    /* Accent block left (id: 5) */
+    .accent-block-left {
+      position: absolute;
+      left: 63px;
+      top: 197px;
+      width: 95px;
+      height: 109px;
+      background-color: #0169bb;
+      border-radius: 8px;
+      z-index: 0;
+    }
+
+    /* Main Sign In Card (id: 10) */
+    .signin-card {
+      position: absolute;
+      left: 160px;
+      top: 20px;
+      width: 412px;
+      height: 286px;
+      background-color: #9abedb;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+      z-index: 2;
+      display: flex;
+      gap: 20px;
+    }
+
+    .signin-card .left-pane {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .signin-card .top-dot {
+      width: 14px;
+      height: 14px;
+      background-color: #6ca7ce;
+      border-radius: 50%;
+      align-self: flex-start;
+    }
+
+    .signin-card .avatar-box {
+      width: 114px;
+      height: 114px;
+      background-color: #1371bd;
+      border-radius: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    .signin-card .avatar-box svg {
+      width: 50px;
+      height: 50px;
+      fill: #ffffff;
+    }
+
+    .signin-card .form-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .signin-card .form-pane h3 {
+      font-size: 1.35rem;
+      color: #003366;
+      font-weight: 700;
+    }
+
+    .input-field {
+      width: 155px;
+      height: 28px;
+      background-color: #e9eaea;
+      border: 1px solid #cccccc;
+      border-radius: 4px;
+      padding: 0 8px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .input-field:focus {
+      border-color: #10497d;
+    }
+
+    .btn-primary {
+      width: 157px;
+      height: 28px;
+      background-color: #10497d;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary:hover {
+      background-color: #0c3860;
+    }
+
+    .btn-secondary {
+      width: 159px;
+      height: 28px;
+      background-color: #ededed;
+      color: #333333;
+      border: 1px solid #cccccc;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background-color: #e0e0e0;
+    }
+
+    /* Accent block right (id: 0) */
+    .accent-block-right {
+      position: absolute;
+      left: 518px;
+      top: 250px;
+      width: 54px;
+      height: 57px;
+      background-color: #409ee8;
+      border-radius: 8px;
+      z-index: 3;
+    }
+
+    footer {
+      background-color: #00467e;
+      height: 78px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.875rem;
+    }
+
+    @media (max-width: 680px) {
+      .canvas-container {
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .welcome-card,
+      .signin-card,
+      .accent-block-left,
+      .accent-block-right {
+        position: static;
+        width: 100%;
+        height: auto;
+      }
+
+      .accent-block-left,
+      .accent-block-right {
+        display: none;
+      }
+
+      .signin-card {
+        flex-direction: column;
+      }
+
+      .input-field,
+      .btn-primary,
+      .btn-secondary {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>APP HEADER</h1>
+  </header>
+
+  <main>
+    <div class="canvas-container">
+      <!-- Welcome Banner -->
+      <section class="welcome-card">
+        <div class="accent-tag"></div>
+        <h2>WELCOME</h2>
+        <p>Your HeadLine NaME</p>
+      </section>
+
+      <!-- Accent Decorative Box Left -->
+      <div class="accent-block-left"></div>
+
+      <!-- Sign In Main Component -->
+      <section class="signin-card">
+        <div class="left-pane">
+          <div class="top-dot"></div>
+          <div class="avatar-box">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+          </div>
+        </div>
+
+        <form class="form-pane" onsubmit="event.preventDefault();">
+          <h3>Sign in</h3>
+          <input type="text" class="input-field" placeholder="Username / Email" required>
+          <button type="submit" class="btn-primary">Sing in</button>
+          <button type="button" class="btn-secondary">sing Kin other</button>
+        </form>
+      </section>
+
+      <!-- Accent Decorative Box Right -->
+      <div class="accent-block-right"></div>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 All Rights Reserved</p>
+  </footer>
+
+</body>
+</html>

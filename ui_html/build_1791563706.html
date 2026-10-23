@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspirational Quote Poster</title>
+    <style>
+        :root {
+            --bg-color: #281e28;
+            --font-family: 'Playfair Display', Georgia, serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #151115;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: var(--font-family);
+            color: #f3f0f5;
+        }
+
+        /* 1:1 Aspect Ratio Responsive Container */
+        .poster-container {
+            width: 95vw;
+            max-width: 650px;
+            aspect-ratio: 1 / 1;
+            background-color: var(--bg-color);
+            position: relative;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .element {
+            position: absolute;
+        }
+
+        /* ID 4: Text Block */
+        .text-block {
+            left: 0;
+            top: 0;
+            width: 66.54%;
+            height: 82.19%;
+            background-color: #28202b;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            /* Left padding is offset to clear the left-column overlay (16.44% + extra) */
+            padding: 5% 5% 5% calc(16.44% + 5%);
+            text-align: center;
+            z-index: 1;
+        }
+
+        .quote {
+            font-size: 1.45rem;
+            line-height: 1.6;
+            font-weight: 400;
+            letter-spacing: 0.03em;
+            color: #e8dbe8;
+            margin: 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.25);
+        }
+
+        .quote strong {
+            font-weight: 700;
+            display: block;
+            margin-bottom: 1rem;
+        }
+
+        .quote em {
+            display: block;
+            margin-top: 1rem;
+            color: #c5b5c5;
+            font-style: italic;
+        }
+
+        /* ID 2: Left column overlay */
+        .left-column {
+            left: 0;
+            top: 0;
+            width: 16.44%;
+            height: 100%;
+            background-color: #1e1925;
+            z-index: 2;
+        }
+
+        /* ID 0: Right column */
+        .right-column {
+            left: 66.73%;
+            top: 0;
+            width: 16.63%;
+            height: 100%;
+            background-color: #0e0f1c;
+            z-index: 2;
+        }
+
+        /* ID 3: Bottom bar */
+        .bottom-bar {
+            left: 0.2%;
+            top: 81.21%;
+            width: 66.34%;
+            height: 18.79%;
+            background-color: #2e181b;
+            z-index: 2;
+        }
+
+        /* ID 5: Bottom-left block */
+        .bottom-left-block {
+            left: 0.2%;
+            top: 82.78%;
+            width: 25.44%;
+            height: 17.22%;
+            background-color: #1f1115;
+            z-index: 3;
+        }
+
+        /* ID 9: Decorative accent vertical block */
+        .accent-v {
+            left: 17.81%;
+            top: 35.42%;
+            width: 3.91%;
+            height: 9.78%;
+            background-color: #404555;
+            z-index: 4;
+            border-radius: 4px;
+        }
+
+        /* ID 8: Accent square */
+        .accent-square {
+            left: 52.05%;
+            top: 46.18%;
+            width: 3.91%;
+            height: 3.72%;
+            background-color: #211e2a;
+            z-index: 4;
+            border-radius: 4px;
+        }
+
+        /* ID 6: Accent pill 1 */
+        .accent-pill-1 {
+            left: 32.09%;
+            top: 53.42%;
+            width: 5.87%;
+            height: 1.17%;
+            background-color: #53535c;
+            z-index: 4;
+            border-radius: 10px;
+        }
+
+        /* ID 7: Accent pill 2 */
+        .accent-pill-2 {
+            left: 27.01%;
+            top: 53.03%;
+            width: 4.11%;
+            height: 1.57%;
+            background-color: #56555e;
+            z-index: 4;
+            border-radius: 10px;
+        }
+
+        /* Media queries for smaller screens to adjust typography size */
+        @media (max-width: 500px) {
+            .quote {
+                font-size: 1.05rem;
+                line-height: 1.45;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="poster-container">
+        <!-- ID 4: Text Block with styled quote -->
+        <div class="element text-block">
+            <p class="quote">
+                <strong>Let it be.</strong>
+                What’s meant for you will never miss you, and what misses you was never meant for you.
+                <em>Choose always peace.</em>
+            </p>
+        </div>
+
+        <!-- ID 2: Left Overlay Column -->
+        <div class="element left-column"></div>
+
+        <!-- ID 0: Right Column -->
+        <div class="element right-column"></div>
+
+        <!-- ID 3: Bottom Bar -->
+        <div class="element bottom-bar"></div>
+
+        <!-- ID 5: Bottom Left Block -->
+        <div class="element bottom-left-block"></div>
+
+        <!-- Accent Components -->
+        <div class="element accent-v"></div>
+        <div class="element accent-square"></div>
+        <div class="element accent-pill-1"></div>
+        <div class="element accent-pill-2"></div>
+    </div>
+</body>
+</html>

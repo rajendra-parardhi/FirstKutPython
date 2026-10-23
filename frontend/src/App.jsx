@@ -20,8 +20,13 @@ function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isUiLoading, setIsUiLoading] = useState(false);
-  const [isIngesting, setIsIngesting] = useState(false);
-  const [activeUiTab, setActiveUiTab] = useState("sam"); // sam, ocr, colors, similarity, json, flutter, html
+  
+  // Output Main Tabs & Sub-Tabs
+  const [activeUiTab, setActiveUiTab] = useState("analysis"); // "analysis" | "generated_code"
+  const [activeAnalysisSubTab, setActiveAnalysisSubTab] = useState("sam"); // "sam" | "ocr" | "colors" | "json" | "similarity"
+  const [activeCodeSubTab, setActiveCodeSubTab] = useState("html"); // "html" | "flutter"
+  const [isSideBySidePreview, setIsSideBySidePreview] = useState(true); // Toggle Code + Live Preview split
+  
   const [uiStatus, setUiStatus] = useState("System Ready. Please upload a UI layout screenshot to begin.");
   const [uiPerformanceMetrics, setUiPerformanceMetrics] = useState(null); 
   
@@ -92,45 +97,7 @@ function App() {
     return figmaPages.find((page) => page.id === activeFigmaPageId) || figmaPages[0];
   }, [figmaPages, activeFigmaPageId]);
 
-  // Bulk folder ingest with automatic IR re-evaluation trigger
-  const handleBulkIngest = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    setIsIngesting(true);
-    setUiStatus("Staging folder for ingestion...");
-    const formData = new FormData();
-    for (let i = 0; i < files.length; i++) { formData.append("files", files[i]); }
-    try {
-      const res = await axios.post(`${API}/api/ingest_folder`, formData, {
-        headers: apiHeaders({ "Content-Type": "multipart/form-data" }),
-        timeout: 120000,
-      });
-
-      const job = await pollJob(res.data.job_id, (snapshot) => {
-        if (snapshot.progress) setIngestProgress(snapshot.progress);
-        if (snapshot.stage) setUiStatus(snapshot.stage);
-      });
-
-      const details = (job.result && job.result.details) || {};
-      const errorCount = (details.errors || []).length;
-      setUiStatus(`Ingestion complete: ${details.processed || 0} images indexed.`);
-      alert(`Ingestion Complete! Processed: ${details.processed || 0} images.${errorCount ? ` Errors: ${errorCount}` : ""}`);
-      
-      // Auto-rerun retrieval if an image request is active
-      if (selectedFile) {
-        handleIngestionCompleteAutoRerun();
-      }
-    } catch (err) {
-      console.error(err);
-      setUiStatus("Folder ingestion failed.");
-      alert(`Error during folder ingestion: ${err.response?.data?.detail || err.message}`);
-    } finally {
-      setIsIngesting(false);
-      e.target.value = "";
-    }
-  };
-
-  // KB File Upload with automatic IR re-evaluation trigger (supports ZIP, DOC, and local SQL/DB)
+  // KB File Upload with automatic IR re-evaluation trigger
   const handleKbFileUpload = async (event, endpoint) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -168,7 +135,6 @@ function App() {
 
       setKbMessage({ type: "success", text: `${message} Auto-rerunning IR retrieval on your request...` });
 
-      // Automatically rerun IR retrieval against original active request
       if (selectedFile) {
         setTimeout(handleIngestionCompleteAutoRerun, 800);
       }
@@ -248,7 +214,6 @@ function App() {
     }
   };
 
-  // Pipeline execution method supporting IR Evaluation and Direct AI generation
   const handleProcessUiPipeline = async (forceAi = false) => {
     if (!selectedFile) return;
     setIsUiLoading(true);
@@ -256,12 +221,12 @@ function App() {
     setUiStatus(forceAi ? "Synthesizing code layout with AI Orchestration..." : "Evaluating IR Retrieval against Knowledge Repo...");
 
     const initialSteps = [
-      { id: 1, name: "Layout Segmentation (SAM)", status: "processing", duration: null },
-      { id: 2, name: "Text Extraction (OCR)", status: "waiting", duration: null },
-      { id: 3, name: "Element Color Profiling", status: "waiting", duration: null },
-      { id: 4, name: "IR Verification & Alignment", status: "waiting", duration: null },
+      { id: 1, name: "Element Detection", status: "processing", duration: null },
+      { id: 2, name: "Text Extraction", status: "waiting", duration: null },
+      { id: 3, name: "Color Palette Extraction", status: "waiting", duration: null },
+      { id: 4, name: "Accuracy & Knowledge Verification", status: "waiting", duration: null },
       { id: 5, name: "Intelligent Synthesis Orchestration", status: "waiting", duration: null },
-      { id: 6, name: "Visual Alignment Check (CLIP)", status: "waiting", duration: null },
+      { id: 6, name: "Visual Alignment Check", status: "waiting", duration: null },
       { id: 7, name: "Codebase Promotion Governance", status: "waiting", duration: null },
     ];
     setLiveSteps(initialSteps);
@@ -293,7 +258,7 @@ function App() {
 
       const result = job.result || {};
       
-      // 1. POPULATE ALL TAB OUTPUTS IMMEDIATELY
+      // Populate Tab Outputs
       if (result.sam_preview) setSamPreview(`data:image/png;base64,${result.sam_preview}`);
       if (result.json || result.ui_json) setUiJsonOutput(result.json || result.ui_json);
 
@@ -304,7 +269,6 @@ function App() {
       setUiHtmlOutput(result.html || result.html_code || result.html_css || result.htmlCssOutput || "");
       setSimilarityOutput(result.similarity || result.similarity_logs || result.similarityLogs || "Analysis complete.");
 
-      // 2. Visual previews & CLIP scores
       if (result.html_render_preview) {
         setHtmlRenderPreview(`data:image/png;base64,${result.html_render_preview}`);
       }
@@ -315,7 +279,6 @@ function App() {
         setModelSelectionReason(result.model_reason || "Automated multi-modal routing determined by synthesis orchestrator.");
       }
 
-      // 3. Set IR Engine Telemetry Data
       const matchStatus = result.ir_match_status || "NO_MATCH";
       setIrEvaluationResult({
         status: matchStatus,
@@ -324,10 +287,9 @@ function App() {
         unresolved: result.unresolved_requirements || [],
       });
 
-      // 4. Show non-blocking popup if IR coverage is insufficient and not forced
       if (!forceAi && (matchStatus === "PARTIAL_MATCH" || matchStatus === "NO_MATCH")) {
         setIsMatchModalOpen(true);
-        setUiStatus(`IR Engine Flagged: ${matchStatus}. Review outputs or enrich repository.`);
+        setUiStatus(`Accuracy Engine Flagged: ${matchStatus}. Review outputs or enrich repository.`);
       } else {
         setUiStatus(result.status || "Pipeline Execution Completed");
       }
@@ -362,23 +324,30 @@ function App() {
     }
   };
 
-  // Popup Action 1: User selects Yes -> Open Knowledge Repo Console
   const handleDecisionEnrichRepo = () => {
     setIsMatchModalOpen(false);
     setIsKnowledgeBaseOpen(true);
   };
 
-  // Popup Action 2: User selects No -> Continue with AI Orchestration
   const handleDecisionContinueAi = () => {
     setIsMatchModalOpen(false);
     handleProcessUiPipeline(true);
   };
 
-  // Auto-rerun retrieval against original request after indexing
   const handleIngestionCompleteAutoRerun = () => {
     setIsKnowledgeBaseOpen(false);
-    setUiStatus("Knowledge Repo enriched. Automatically rerunning IR retrieval on original request...");
+    setUiStatus("Knowledge Repo enriched. Automatically rerunning retrieval on original request...");
     handleProcessUiPipeline(false);
+  };
+
+  const openInDartPad = () => {
+    if (!uiFlutterOutput) return;
+    const dartpadWindow = window.open("https://dartpad.dev/embed-flutter.html", "_blank");
+    if (dartpadWindow) {
+      setTimeout(() => {
+        dartpadWindow.postMessage({ source: uiFlutterOutput, type: "sourceCode" }, "*");
+      }, 2500);
+    }
   };
 
   // ==========================================
@@ -557,8 +526,6 @@ function App() {
     }
   };
 
-  const [ingestProgress, setIngestProgress] = useState({ current_file: "", processed: 0, total: 0 });
-
   const copyToClipboard = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -574,19 +541,19 @@ function App() {
           <h1>UI Image Parser</h1>
         </div>
         
-        {/* Navigation Selector */}
+        {/* Navigation Selector (User Friendly Workspaces) */}
         <div className="workspace-toggle-bar">
           <button 
             className={`toggle-btn ${workspace === "screenshot" ? "active" : ""}`}
             onClick={() => setWorkspace("screenshot")}
           >
-             Upload Files & IR Engine
+             Screenshot to Code
           </button>
           <button 
             className={`toggle-btn ${workspace === "figma" ? "active" : ""}`}
             onClick={() => setWorkspace("figma")}
           >
-             Figma Compiler Workspace
+             Figma to Code
           </button>
         </div>
 
@@ -596,7 +563,7 @@ function App() {
         </div>
       </header>
 
-      {/* WORKSPACE 1: SCREENSHOT TO CODE RAG PIPELINE */}
+      {/* WORKSPACE 1: SCREENSHOT TO CODE PIPELINE */}
       {workspace === "screenshot" && (
         <main className="workspace-grid" style={{ gridTemplateColumns: "420px 1fr" }}>
           
@@ -607,9 +574,9 @@ function App() {
             </div>
             
             {/* Scrollable Container Body Wrapper */}
-            <div className="panel-body" style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div className="panel-body" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
               
-              {/* PROACTIVE KNOWLEDGE REPO BUTTON */}
+              {/* KNOWLEDGE REPO BUTTON */}
               <button
                 onClick={() => setIsKnowledgeBaseOpen(true)}
                 style={{
@@ -631,7 +598,7 @@ function App() {
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span>📚</span>
-                  <span>Build / Update Knowledge Repo</span>
+                  <span>Knowledge Base</span>
                 </div>
                 <span style={{ 
                   background: uiJsonOutput ? "#10b98125" : "#64748b25", 
@@ -641,7 +608,7 @@ function App() {
                   borderRadius: "4px", 
                   fontSize: "10px" 
                 }}>
-                  {uiJsonOutput ? "Ready" : "Enrich"}
+                  {uiJsonOutput ? "Ready" : "Update"}
                 </span>
               </button>
 
@@ -651,7 +618,7 @@ function App() {
                 style={{ 
                   display: "flex", 
                   flexDirection: "column", 
-                  height: "330px", 
+                  height: "350px", 
                   border: "1px solid #334155", 
                   borderRadius: "8px", 
                   backgroundColor: "#0b1329", 
@@ -660,7 +627,6 @@ function App() {
                   flexShrink: 0
                 }}
               >
-                {/* Fixed Top Header */}
                 <div 
                   className="terminal-header" 
                   style={{ 
@@ -695,7 +661,6 @@ function App() {
                   </span>
                 </div>
 
-                {/* Scrollable Container Body */}
                 <div 
                   className="terminal-body" 
                   style={{ 
@@ -713,7 +678,6 @@ function App() {
                     </p>
                   </div>
                   
-                  {/* Step Logs */}
                   {liveSteps.length > 0 && (
                     <div className="metrics-profiler" style={{ borderTop: "1px solid #1e293b", paddingTop: "8px" }}>
                       <div style={{ color: "#94a3b8", fontSize: "10px", marginBottom: "8px", letterSpacing: "0.6px", fontWeight: "bold" }}>
@@ -752,7 +716,7 @@ function App() {
                         );
                       })}
 
-                      {/* SYSTEM ENGINE BAR WITH ELABORATED TELEMETRY */}
+                      {/* SYSTEM ENGINE BAR */}
                       <div 
                         style={{ 
                           marginTop: "12px", 
@@ -810,24 +774,6 @@ function App() {
                           </p>
                         </div>
                       </div>
-                      
-                      {isIngesting && (
-                        <div className="ingestion-overlay" style={{ marginTop: "10px", padding: "10px", border: "1px dashed #475569", borderRadius: "4px" }}>
-                          <div className="progress-card">
-                            <span style={{ color: "#38bdf8", fontSize: "11px" }}>Processing Folder...</span>
-                            <div style={{ fontSize: "10px", color: "#94a3b8" }}>
-                              Current File: <strong>{ingestProgress.current_file}</strong>
-                            </div>
-                            <div className="progress-bar-bg" style={{ width: "100%", height: "4px", background: "#334155", borderRadius: "2px", margin: "4px 0" }}>
-                              <div 
-                                className="progress-bar-fill" 
-                                style={{ width: `${(ingestProgress.processed / (ingestProgress.total || 1)) * 100}%`, height: "4px", background: "#10b981", borderRadius: "2px" }}
-                              ></div>
-                            </div>
-                            <span style={{ fontSize: "10px", color: "#94a3b8" }}>{ingestProgress.processed} / {ingestProgress.total} processed.</span>
-                          </div>
-                        </div>
-                      )}
 
                       {uiPerformanceMetrics && !isUiLoading && (
                         <div 
@@ -856,7 +802,7 @@ function App() {
                   <input type="file" accept="image/*" onChange={handleUiFileChange} />
                   <div className="upload-box-content">
                     <span className="upload-icon">📁</span>
-                    <span>Click to Upload UI Screenshot</span>
+                    <span>Input</span>
                   </div>
                 </label>
               </div>
@@ -872,270 +818,656 @@ function App() {
                 onClick={() => handleProcessUiPipeline(false)}
                 disabled={isUiLoading || !selectedFile}
                 className={`process-button ${isUiLoading ? "btn-loading" : ""}`}
-                style={{ flexShrink: 0 }}
+                style={{ flexShrink: 0, marginTop: "8px" }}
               >
                 {isUiLoading ? "Running Pipeline Engine..." : "Run Code Engine Pipeline"}
               </button>
 
-              <div style={{ borderTop: "1px solid #334155", paddingTop: "15px", flexShrink: 0 }}>
-                <label style={{ cursor: "pointer", background: "#1e293b", padding: "10px", display: "block", textAlign: "center", borderRadius: "6px", color: "white" }}>
-                  <input type="file" multiple="multiple" webkitdirectory="true" directory="true" onChange={handleBulkIngest} style={{ display: "none" }} />
-                  📂 {isIngesting ? "Ingesting Folder..." : "Bulk Ingest UI Folder"}
-                </label>
-              </div>
             </div>
           </section>
 
           {/* Right Tabbed Output Panel */}
-          <section className="panel output-panel">
-            <div className="tabs-header">
-              <button className={`tab-btn ${activeUiTab === "sam" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("sam")}> SAM Segmentation</button>
-              <button className={`tab-btn ${activeUiTab === "ocr" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("ocr")}>OCR Text</button>
-              <button className={`tab-btn ${activeUiTab === "colors" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("colors")}> Colors</button>
-              <button className={`tab-btn ${activeUiTab === "similarity" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("similarity")}> Similarity & IR</button>
-              <button className={`tab-btn ${activeUiTab === "json" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("json")}> Layout JSON</button>
-              <button className={`tab-btn ${activeUiTab === "flutter" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("flutter")}> Flutter Output</button>
-              <button className={`tab-btn ${activeUiTab === "html" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("html")}> HTML / CSS Output</button>
+          <section className="panel output-panel" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+            <div className="tabs-header" style={{ flexShrink: 0 }}>
+              {/* MAIN TAB 1:  IMAGE ANALYSIS */}
+              <button 
+                className={`tab-btn ${activeUiTab === "analysis" ? "tab-active" : ""}`} 
+                onClick={() => setActiveUiTab("analysis")}
+              >
+                 Image Analysis
+              </button>
+
+              {/* MAIN TAB 2:  CODE & PREVIEW */}
+              <button 
+                className={`tab-btn ${activeUiTab === "generated_code" ? "tab-active" : ""}`} 
+                onClick={() => setActiveUiTab("generated_code")}
+              >
+                 Code & Preview
+              </button>
             </div>
 
-            <div className="tab-viewport">
-              {activeUiTab === "sam" && (
-                <div className="viewport-content centered-flex">
-                  {samPreview ? (
-                    <div className="segmented-preview-container">
-                      <img src={samPreview} alt="SAM segmentation output" className="segmented-img" />
+            <div className="tab-viewport" style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              {/* =======================================================
+                  MAIN TAB 1 VIEWPORT: 🔍 IMAGE ANALYSIS
+                  ======================================================= */}
+              {activeUiTab === "analysis" && (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", overflow: "hidden", minHeight: 0 }}>
+                  
+                  {/* Analysis Sub-Navigation Bar */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 16px",
+                    background: "#091122",
+                    borderBottom: "1px solid #334155",
+                    flexShrink: 0,
+                    overflowX: "auto"
+                  }}>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      {/* Step 1: UI Elements */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveAnalysisSubTab("sam")}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: "5px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          border: activeAnalysisSubTab === "sam" ? "1px solid #38bdf8" : "1px solid #334155",
+                          background: activeAnalysisSubTab === "sam" ? "#1e293b" : "transparent",
+                          color: activeAnalysisSubTab === "sam" ? "#38bdf8" : "#94a3b8",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        <span>1.</span> UI Elements
+                      </button>
+
+                      {/* Step 2: Extracted Text */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveAnalysisSubTab("ocr")}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: "5px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          border: activeAnalysisSubTab === "ocr" ? "1px solid #38bdf8" : "1px solid #334155",
+                          background: activeAnalysisSubTab === "ocr" ? "#1e293b" : "transparent",
+                          color: activeAnalysisSubTab === "ocr" ? "#38bdf8" : "#94a3b8",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        <span>2.</span> Extracted Text
+                      </button>
+
+                      {/* Step 3: Color Palette */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveAnalysisSubTab("colors")}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: "5px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          border: activeAnalysisSubTab === "colors" ? "1px solid #38bdf8" : "1px solid #334155",
+                          background: activeAnalysisSubTab === "colors" ? "#1e293b" : "transparent",
+                          color: activeAnalysisSubTab === "colors" ? "#38bdf8" : "#94a3b8",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        <span>3.</span> Color Palette
+                      </button>
+
+                      {/* Step 4: UI Structure */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveAnalysisSubTab("json")}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: "5px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          border: activeAnalysisSubTab === "json" ? "1px solid #38bdf8" : "1px solid #334155",
+                          background: activeAnalysisSubTab === "json" ? "#1e293b" : "transparent",
+                          color: activeAnalysisSubTab === "json" ? "#38bdf8" : "#94a3b8",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        <span>4.</span> UI Structure
+                      </button>
+
+                      {/* Step 5: Accuracy Check */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveAnalysisSubTab("similarity")}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: "5px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          border: activeAnalysisSubTab === "similarity" ? "1px solid #38bdf8" : "1px solid #334155",
+                          background: activeAnalysisSubTab === "similarity" ? "#1e293b" : "transparent",
+                          color: activeAnalysisSubTab === "similarity" ? "#38bdf8" : "#94a3b8",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        <span>5.</span> Accuracy Check
+                      </button>
                     </div>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>SAM visual overlay layout results will render here after execution.</p>
+
+                    {/* Copy actions */}
+                    <div style={{ marginLeft: "12px" }}>
+                      {activeAnalysisSubTab === "json" && uiJsonOutput && (
+                        <button className="copy-btn" onClick={() => copyToClipboard(uiJsonOutput)} style={{ position: "static", margin: 0 }}>
+                          Copy UI Structure
+                        </button>
+                      )}
+                      {activeAnalysisSubTab === "ocr" && ocrOutput && (
+                        <button className="copy-btn" onClick={() => copyToClipboard(JSON.stringify(ocrOutput, null, 2))} style={{ position: "static", margin: 0 }}>
+                          Copy Extracted Text
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 1. UI Elements View */}
+                  {activeAnalysisSubTab === "sam" && (
+                    <div className="viewport-content centered-flex" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                      {samPreview ? (
+                        <div className="segmented-preview-container">
+                          <img src={samPreview} alt="Detected UI elements layout output" className="segmented-img" />
+                        </div>
+                      ) : (
+                        <div className="empty-state">
+                          <span className="empty-icon"></span>
+                          <p>Detected UI elements layout results will render here after execution.</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {activeUiTab === "ocr" && (
-                <div className="viewport-content code-layout">
-                  {ocrOutput ? (
-                    <>
-                      <button className="copy-btn" onClick={() => copyToClipboard(JSON.stringify(ocrOutput, null, 2))}>Copy OCR Data</button>
-                      <pre className="code-block">
-                        <code>{JSON.stringify(ocrOutput, null, 2)}</code>
-                      </pre>
-                    </>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Mapped text strings extracted from EasyOCR will render here.</p>
+                  {/* 2. Extracted Text Output */}
+                  {activeAnalysisSubTab === "ocr" && (
+                    <div className="viewport-content code-layout" style={{ flex: 1, minHeight: 0, overflowY: "auto", position: "relative" }}>
+                      {ocrOutput ? (
+                        <pre className="code-block" style={{ margin: 0 }}>
+                          <code>{JSON.stringify(ocrOutput, null, 2)}</code>
+                        </pre>
+                      ) : (
+                        <div className="empty-state">
+                          <span className="empty-icon"></span>
+                          <p>Text extracted from the screen will render here.</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
 
-              {activeUiTab === "colors" && (
-                <div className="viewport-content centered-flex">
-                  {colorsOutput && colorsOutput.length > 0 ? (
-                    <div className="colors-grid">
-                      {colorsOutput.map((color, idx) => (
-                        <div key={idx} className="color-swatch-card">
-                          <div className="color-preview-circle" style={{ backgroundColor: color }}></div>
-                          <div className="color-meta-info">
-                            <span className="color-swatch-id">ID: {idx}</span>
-                            <span className="color-swatch-hex">{color}</span>
+                  {/* 3. Color Palette Output */}
+                  {activeAnalysisSubTab === "colors" && (
+                    <div className="viewport-content centered-flex" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                      {colorsOutput && colorsOutput.length > 0 ? (
+                        <div className="colors-grid">
+                          {colorsOutput.map((color, idx) => (
+                            <div key={idx} className="color-swatch-card">
+                              <div className="color-preview-circle" style={{ backgroundColor: color }}></div>
+                              <div className="color-meta-info">
+                                <span className="color-swatch-id">ID: {idx}</span>
+                                <span className="color-swatch-hex">{color}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="empty-state">
+                          <span className="empty-icon"></span>
+                          <p>Extracted hexadecimal design colors will display here.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 4. UI Structure Output */}
+                  {activeAnalysisSubTab === "json" && (
+                    <div className="viewport-content code-layout" style={{ flex: 1, minHeight: 0, overflowY: "auto", position: "relative" }}>
+                      {uiJsonOutput ? (
+                        <pre className="code-block" style={{ margin: 0 }}>
+                          <code>{uiJsonOutput}</code>
+                        </pre>
+                      ) : (
+                        <div className="empty-state">
+                          <span className="empty-icon"></span>
+                          <p>Generated UI structure hierarchy will render here.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 5. Accuracy Check Output (Fully Scrollable) */}
+                  {activeAnalysisSubTab === "similarity" && (
+                    <div 
+                      className="viewport-content" 
+                      style={{ 
+                        flex: 1, 
+                        minHeight: 0, 
+                        overflowY: "auto", 
+                        padding: "20px", 
+                        display: "block" 
+                      }}
+                    >
+                      {similarityOutput ? (
+                        <div className="similarity-container" style={{ display: "flex", flexDirection: "column", gap: "20px", minHeight: "min-content" }}>
+                          
+                          {/* Accuracy Engine Status & Relevance Card */}
+                          {irEvaluationResult && (
+                            <div style={{
+                              background: "#1e293b",
+                              border: "1px solid #334155",
+                              borderRadius: "8px",
+                              padding: "16px"
+                            }}>
+                              <h4 style={{ color: "#38bdf8", margin: "0 0 10px 0" }}>Accuracy & Match Telemetry</h4>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+                                <div>
+                                  <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>STATUS</span>
+                                  <div style={{ fontWeight: "bold", color: irEvaluationResult.status === "FULL_MATCH" ? "#34d399" : "#f59e0b" }}>{irEvaluationResult.status}</div>
+                                </div>
+                                <div>
+                                  <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>RELEVANCE SCORE</span>
+                                  <div style={{ fontWeight: "bold", color: "#38bdf8" }}>{Math.round(irEvaluationResult.relevance * 100)}%</div>
+                                </div>
+                                <div>
+                                  <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>COVERAGE SCORE</span>
+                                  <div style={{ fontWeight: "bold", color: "#38bdf8" }}>{Math.round(irEvaluationResult.coverage * 100)}%</div>
+                                </div>
+                              </div>
+                              {irEvaluationResult.unresolved && irEvaluationResult.unresolved.length > 0 && (
+                                <div style={{ borderTop: "1px dashed #334155", paddingTop: "8px" }}>
+                                  <span style={{ fontSize: "10px", color: "#f87171", fontWeight: "bold" }}>UNRESOLVED REQUIREMENTS:</span>
+                                  <ul style={{ margin: "4px 0 0 16px", padding: 0, fontSize: "11px", color: "#cbd5e1" }}>
+                                    {irEvaluationResult.unresolved.map((u, i) => <li key={i}>{u}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Visual Match Quality Ring */}
+                          {clipSimilarity !== null && (
+                            <div className="visual-alignment-metrics" style={{
+                              background: "#1e293b",
+                              border: "1px solid #334155",
+                              borderRadius: "8px",
+                              padding: "20px",
+                              textAlign: "center"
+                            }}>
+                              <h3 style={{ margin: "0 0 10px 0", color: "#f8fafc", fontSize: "16px" }}>Reconstruction Quality</h3>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "15px" }}>
+                                <div className="progress-circle-indicator" style={{
+                                  position: "relative",
+                                  width: "120px",
+                                  height: "120px",
+                                  borderRadius: "50%",
+                                  background: `conic-gradient(#10b981 ${clipSimilarity * 3.6}deg, #334155 0deg)`,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}>
+                                  <div style={{
+                                    width: "100px",
+                                    height: "100px",
+                                    borderRadius: "50%",
+                                    background: "#1e293b",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexDirection: "column"
+                                  }}>
+                                    <span style={{ color: "#34d399", fontSize: "24px", fontWeight: "bold" }}>{clipSimilarity}%</span>
+                                    <span style={{ color: "#94a3b8", fontSize: "9px", textTransform: "uppercase" }}>Visual Match</span>
+                                  </div>
+                                </div>
+                                
+                                <div style={{ textAlign: "left" }}>
+                                  <h4 style={{ color: "#38bdf8", margin: "0 0 5px 0" }}>Semantic Visual Verification</h4>
+                                  <p style={{ color: "#94a3b8", fontSize: "12px", margin: "0", maxWidth: "400px" }}>
+                                    Evaluates structural similarities and color themes between original source inputs and compiled HTML outputs.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Render Visual Comparison Side-by-Side */}
+                          {htmlRenderPreview && imagePreview && (
+                            <div className="visual-side-by-side" style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: "15px",
+                            }}>
+                              <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", padding: "10px" }}>
+                                <h4 style={{ color: "#94a3b8", margin: "0 0 8px 0", textAlign: "center", fontSize: "12px" }}>ORIGINAL INPUT VIEW</h4>
+                                <img src={imagePreview} alt="Original input mockup" style={{ width: "100%", height: "auto", maxHeight: "400px", objectFit: "contain", borderRadius: "4px" }} />
+                              </div>
+                              
+                              <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", padding: "10px" }}>
+                                <h4 style={{ color: "#94a3b8", margin: "0 0 8px 0", textAlign: "center", fontSize: "12px" }}>RENDERED MOCKUP</h4>
+                                <img src={htmlRenderPreview} alt="Rendered preview mockup" style={{ width: "100%", height: "auto", maxHeight: "400px", objectFit: "contain", borderRadius: "4px" }} />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="similarity-card" style={{ width: "100%" }}>
+                            <h3 style={{ marginBottom: "15px", color: "#f8fafc", fontSize: "14px" }}>Design Matching & Retrieval Log</h3>
+                            <pre style={{ 
+                              backgroundColor: "#0f172a", 
+                              padding: "15px", 
+                              borderRadius: "6px", 
+                              border: "1px solid #334155", 
+                              color: "#38bdf8", 
+                              fontFamily: "monospace", 
+                              fontSize: "12px", 
+                              lineHeight: "1.5", 
+                              whiteSpace: "pre-wrap",
+                              overflowX: "auto"
+                            }}>
+                              <code>{similarityOutput}</code>
+                            </pre>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Extracted hexadecimal component colors will display here.</p>
+                      ) : (
+                        <div className="empty-state">
+                          <span className="empty-icon"></span>
+                          <p>Visual accuracy check and matching logs will display here.</p>
+                        </div>
+                      )}
                     </div>
                   )}
+
                 </div>
               )}
 
-              {activeUiTab === "similarity" && (
-                <div className="viewport-content" style={{ overflow: "auto", height: "100%", padding: "20px" }}>
-                  {similarityOutput ? (
-                    <div className="similarity-container" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                      
-                      {/* IR Engine Status & Relevance Card */}
-                      {irEvaluationResult && (
-                        <div style={{
-                          background: "#1e293b",
-                          border: "1px solid #334155",
-                          borderRadius: "8px",
-                          padding: "16px"
-                        }}>
-                          <h4 style={{ color: "#38bdf8", margin: "0 0 10px 0" }}>IR Engine Evaluation Telemetry</h4>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "12px" }}>
-                            <div>
-                              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>STATUS</span>
-                              <div style={{ fontWeight: "bold", color: irEvaluationResult.status === "FULL_MATCH" ? "#34d399" : "#f59e0b" }}>{irEvaluationResult.status}</div>
-                            </div>
-                            <div>
-                              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>RELEVANCE SCORE</span>
-                              <div style={{ fontWeight: "bold", color: "#38bdf8" }}>{Math.round(irEvaluationResult.relevance * 100)}%</div>
-                            </div>
-                            <div>
-                              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>COVERAGE SCORE</span>
-                              <div style={{ fontWeight: "bold", color: "#38bdf8" }}>{Math.round(irEvaluationResult.coverage * 100)}%</div>
-                            </div>
+              {/* =======================================================
+                  MAIN TAB 2 VIEWPORT: 💻 CODE & PREVIEW
+                  ======================================================= */}
+              {activeUiTab === "generated_code" && (
+                <div className="viewport-content code-layout" style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, padding: 0 }}>
+                  
+                  {/* Secondary Sub-navigation Bar */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 16px",
+                    background: "#091122",
+                    borderBottom: "1px solid #334155",
+                    flexShrink: 0
+                  }}>
+                    {/* Language Selector */}
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveCodeSubTab("html")}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: "5px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          border: activeCodeSubTab === "html" ? "1px solid #38bdf8" : "1px solid #334155",
+                          background: activeCodeSubTab === "html" ? "#1e293b" : "transparent",
+                          color: activeCodeSubTab === "html" ? "#38bdf8" : "#94a3b8",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px"
+                        }}
+                      >
+                        <span></span> HTML / CSS Code
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveCodeSubTab("flutter")}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: "5px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          border: activeCodeSubTab === "flutter" ? "1px solid #38bdf8" : "1px solid #334155",
+                          background: activeCodeSubTab === "flutter" ? "#1e293b" : "transparent",
+                          color: activeCodeSubTab === "flutter" ? "#38bdf8" : "#94a3b8",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px"
+                        }}
+                      >
+                        <span></span> Flutter Code
+                      </button>
+
+                      {/* Side-by-side View Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setIsSideBySidePreview(!isSideBySidePreview)}
+                        style={{
+                          marginLeft: "12px",
+                          padding: "5px 10px",
+                          borderRadius: "4px",
+                          fontSize: "11px",
+                          fontWeight: "bold",
+                          cursor: "pointer",
+                          border: "1px dashed #64748b",
+                          background: isSideBySidePreview ? "#0284c725" : "transparent",
+                          color: isSideBySidePreview ? "#38bdf8" : "#94a3b8"
+                        }}
+                      >
+                        {isSideBySidePreview ? "◫ Split View: Code + Live Preview" : "📄 View Code Only"}
+                      </button>
+                    </div>
+
+                    {/* Actions Toolbar */}
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      {activeCodeSubTab === "flutter" && uiFlutterOutput && (
+                        <button
+                          className="copy-btn"
+                          onClick={openInDartPad}
+                          style={{ margin: 0, position: "static", background: "#059669", color: "#ffffff" }}
+                          title="Open code directly inside interactive Google DartPad runner"
+                        >
+                           Open in Live Playground
+                        </button>
+                      )}
+
+                      {activeCodeSubTab === "html" && uiHtmlOutput && (
+                        <button
+                          className="copy-btn"
+                          onClick={() => copyToClipboard(uiHtmlOutput)}
+                          style={{ margin: 0, position: "static" }}
+                        >
+                          Copy HTML Code
+                        </button>
+                      )}
+
+                      {activeCodeSubTab === "flutter" && uiFlutterOutput && (
+                        <button
+                          className="copy-btn"
+                          onClick={() => copyToClipboard(uiFlutterOutput)}
+                          style={{ margin: 0, position: "static" }}
+                        >
+                          Copy Flutter Code
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Code & Live Preview Layout Area */}
+                  <div style={{ 
+                    flex: 1, 
+                    minHeight: 0,
+                    overflow: "hidden", 
+                    display: isSideBySidePreview ? "grid" : "block", 
+                    gridTemplateColumns: isSideBySidePreview ? "1fr 1fr" : "1fr",
+                    height: "100%" 
+                  }}>
+                    
+                    {/* LEFT PANE: SOURCE CODE DISPLAY */}
+                    <div style={{ 
+                      height: "100%", 
+                      minHeight: 0,
+                      overflowY: "auto", 
+                      padding: "16px", 
+                      borderRight: isSideBySidePreview ? "1px solid #334155" : "none" 
+                    }}>
+                      {activeCodeSubTab === "html" ? (
+                        uiHtmlOutput ? (
+                          <pre className="code-block" style={{ margin: 0 }}>
+                            <code>{uiHtmlOutput}</code>
+                          </pre>
+                        ) : (
+                          <div className="empty-state">
+                            <span className="empty-icon"></span>
+                            <p>Generated semantic HTML5 structural layout and CSS code will render here.</p>
                           </div>
-                          {irEvaluationResult.unresolved && irEvaluationResult.unresolved.length > 0 && (
-                            <div style={{ borderTop: "1px dashed #334155", paddingTop: "8px" }}>
-                              <span style={{ fontSize: "10px", color: "#f87171", fontWeight: "bold" }}>UNRESOLVED REQUIREMENTS:</span>
-                              <ul style={{ margin: "4px 0 0 16px", padding: 0, fontSize: "11px", color: "#cbd5e1" }}>
-                                {irEvaluationResult.unresolved.map((u, i) => <li key={i}>{u}</li>)}
-                              </ul>
+                        )
+                      ) : (
+                        uiFlutterOutput ? (
+                          <pre className="code-block" style={{ margin: 0 }}>
+                            <code>{uiFlutterOutput}</code>
+                          </pre>
+                        ) : (
+                          <div className="empty-state">
+                            <span className="empty-icon"></span>
+                            <p>Generated Dart/Flutter widgets implementation code will render here.</p>
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    {/* RIGHT PANE: LIVE SIDE-BY-SIDE COMPILER & PREVIEW (SCROLLABLE) */}
+                    {isSideBySidePreview && (
+                      <div style={{ 
+                        height: "100%", 
+                        minHeight: 0,
+                        display: "flex", 
+                        flexDirection: "column", 
+                        background: "#020617", 
+                        overflow: "hidden" 
+                      }}>
+                        <div style={{ 
+                          padding: "6px 14px", 
+                          background: "#0b1329", 
+                          borderBottom: "1px solid #334155", 
+                          fontSize: "11px", 
+                          color: "#94a3b8",
+                          fontWeight: "bold",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          flexShrink: 0
+                        }}>
+                          <span>LIVE COMPILER PREVIEW</span>
+                          <span>{activeCodeSubTab === "html" ? "Live Web Preview" : "Mobile App Preview"}</span>
+                        </div>
+
+                        {/* Preview Scrollable Viewport */}
+                        <div style={{ flex: 1, minHeight: 0, padding: "14px", overflowY: "auto" }}>
+                          {activeCodeSubTab === "html" ? (
+                            uiHtmlOutput ? (
+                              <iframe
+                                title="Live Web Preview"
+                                srcDoc={uiHtmlOutput}
+                                sandbox="allow-scripts"
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  minHeight: "520px",
+                                  backgroundColor: "#ffffff",
+                                  border: "1px solid #334155",
+                                  borderRadius: "6px"
+                                }}
+                              />
+                            ) : (
+                              <div className="empty-state">
+                                <p>Awaiting HTML code generation to mount live preview...</p>
+                              </div>
+                            )
+                          ) : (
+                            /* Flutter Preview Pane (Fully Scrollable) */
+                            <div style={{ display: "flex", flexDirection: "column", gap: "14px", minHeight: "min-content" }}>
+                              {htmlRenderPreview ? (
+                                <div style={{ background: "#1e293b", padding: "14px", borderRadius: "8px", border: "1px solid #334155", textAlign: "center" }}>
+                                  <span style={{ fontSize: "11px", color: "#38bdf8", fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                                    RENDERED MOCKUP
+                                  </span>
+                                  <img 
+                                    src={htmlRenderPreview} 
+                                    alt="Compiled UI visual preview" 
+                                    style={{ width: "100%", height: "auto", borderRadius: "4px", objectFit: "contain", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }} 
+                                  />
+                                </div>
+                              ) : (
+                                <div style={{ background: "#1e293b", padding: "16px", borderRadius: "8px", border: "1px dashed #334155", textAlign: "center" }}>
+                                  <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0 }}>
+                                    Snapshot will appear here once the pipeline renders the visual alignment check.
+                                  </p>
+                                </div>
+                              )}
+
+                              <div style={{ background: "#0f172a", padding: "16px", borderRadius: "8px", border: "1px solid #334155", color: "#cbd5e1", fontSize: "12px", lineHeight: "1.5" }}>
+                                <h4 style={{ color: "#38bdf8", margin: "0 0 6px 0", fontSize: "13px" }}>⚡ Interactive Flutter Sandbox</h4>
+                                <p style={{ margin: "0 0 12px 0", color: "#94a3b8" }}>
+                                  Flutter widgets compile through the Skia/Impeller engine. Launch the interactive editor in DartPad to test and interact with this widget in real-time:
+                                </p>
+                                <button
+                                  onClick={openInDartPad}
+                                  disabled={!uiFlutterOutput}
+                                  style={{
+                                    width: "100%",
+                                    padding: "10px 14px",
+                                    borderRadius: "5px",
+                                    background: "#0284c7",
+                                    color: "#ffffff",
+                                    border: "none",
+                                    fontWeight: "bold",
+                                    fontSize: "12px",
+                                    cursor: uiFlutterOutput ? "pointer" : "not-allowed",
+                                    opacity: uiFlutterOutput ? 1 : 0.5,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "8px"
+                                  }}
+                                >
+                                  <span></span> Open in Live Playground
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
-                      )}
-
-                      {/* CLIP Similarity Score Progress Tracker */}
-                      {clipSimilarity !== null && (
-                        <div className="visual-alignment-metrics" style={{
-                          background: "#1e293b",
-                          border: "1px solid #334155",
-                          borderRadius: "8px",
-                          padding: "20px",
-                          textAlign: "center"
-                        }}>
-                          <h3 style={{ margin: "0 0 10px 0", color: "#f8fafc", fontSize: "16px" }}>Reconstruction Metrics</h3>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "15px" }}>
-                            <div className="progress-circle-indicator" style={{
-                              position: "relative",
-                              width: "120px",
-                              height: "120px",
-                              borderRadius: "50%",
-                              background: `conic-gradient(#10b981 ${clipSimilarity * 3.6}deg, #334155 0deg)`,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center"
-                            }}>
-                              <div style={{
-                                width: "100px",
-                                height: "100px",
-                                borderRadius: "50%",
-                                background: "#1e293b",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexDirection: "column"
-                              }}>
-                                <span style={{ color: "#34d399", fontSize: "24px", fontWeight: "bold" }}>{clipSimilarity}%</span>
-                                <span style={{ color: "#94a3b8", fontSize: "9px", textTransform: "uppercase" }}>CLIP Match</span>
-                              </div>
-                            </div>
-                            
-                            <div style={{ textAlign: "left" }}>
-                              <h4 style={{ color: "#38bdf8", margin: "0 0 5px 0" }}>CLIP Semantic Verification</h4>
-                              <p style={{ color: "#94a3b8", fontSize: "12px", margin: "0", maxWidth: "400px" }}>
-                                Evaluates structural similarities and color themes between original source inputs and compiled HTML outputs.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Render Visual Comparison Side-by-Side */}
-                      {htmlRenderPreview && imagePreview && (
-                        <div className="visual-side-by-side" style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: "15px",
-                        }}>
-                          <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", padding: "10px" }}>
-                            <h4 style={{ color: "#94a3b8", margin: "0 0 8px 0", textAlign: "center", fontSize: "12px" }}>ORIGINAL INPUT VIEW</h4>
-                            <img src={imagePreview} alt="Original input mockup" style={{ width: "100%", height: "auto", maxHeight: "400px", objectFit: "contain", borderRadius: "4px" }} />
-                          </div>
-                          
-                          <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", padding: "10px" }}>
-                            <h4 style={{ color: "#94a3b8", margin: "0 0 8px 0", textAlign: "center", fontSize: "12px" }}>HTML OUTPUT RENDER</h4>
-                            <img src={htmlRenderPreview} alt="Rendered HTML preview mockup" style={{ width: "100%", height: "auto", maxHeight: "400px", objectFit: "contain", borderRadius: "4px" }} />
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="similarity-card" style={{ width: "100%" }}>
-                        <h3 style={{ marginBottom: "15px", color: "#f8fafc", fontSize: "14px" }}>Vector Search Matching Log</h3>
-                        <pre style={{ 
-                          backgroundColor: "#0f172a", 
-                          padding: "15px", 
-                          borderRadius: "6px", 
-                          border: "1px solid #334155", 
-                          color: "#38bdf8", 
-                          fontFamily: "monospace", 
-                          fontSize: "12px", 
-                          lineHeight: "1.5", 
-                          whiteSpace: "pre-wrap" 
-                        }}>
-                          <code>{similarityOutput}</code>
-                        </pre>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Database FAISS and CLIP similarity check logs will display here.</p>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
 
-              {activeUiTab === "json" && (
-                <div className="viewport-content code-layout">
-                  {uiJsonOutput ? (
-                    <>
-                      <button className="copy-btn" onClick={() => copyToClipboard(uiJsonOutput)}>Copy JSON Blueprint</button>
-                      <pre className="code-block">
-                        <code>{uiJsonOutput}</code>
-                      </pre>
-                    </>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Generated bounding element JSON hierarchies will render here.</p>
-                    </div>
-                  )}
-                </div>
-              )}
+                  </div>
 
-              {activeUiTab === "flutter" && (
-                <div className="viewport-content code-layout">
-                  {uiFlutterOutput ? (
-                    <>
-                      <button className="copy-btn" onClick={() => copyToClipboard(uiFlutterOutput)}>Copy Dart Code</button>
-                      <pre className="code-block">
-                        <code>{uiFlutterOutput}</code>
-                      </pre>
-                    </>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Generated Dart/Flutter widgets implementation code will render here.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeUiTab === "html" && (
-                <div className="viewport-content code-layout">
-                  {uiHtmlOutput ? (
-                    <>
-                      <button className="copy-btn" onClick={() => copyToClipboard(uiHtmlOutput)}>Copy HTML Code</button>
-                      <pre className="code-block">
-                        <code>{uiHtmlOutput}</code>
-                      </pre>
-                    </>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Generated semantic HTML5 structural layout and CSS code will render here.</p>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -1247,7 +1579,6 @@ function App() {
 
             {/* Split Preview and Code Area */}
             <div className="figma-splits-container">
-              {/* Pages & Canvas Preview */}
               <div className="split-view left-split">
                 <div className="split-header">Figma Page Navigator</div>
                 <div className="split-body">
@@ -1268,7 +1599,6 @@ function App() {
                 </div>
               </div>
 
-              {/* Compilation Tab and Code Blocks */}
               <div className="split-view right-split">
                 <div className="split-tab-triggers">
                   <button 
@@ -1281,7 +1611,7 @@ function App() {
                     className={`split-tab-btn ${activeFigmaTab === "ai" ? "active" : ""}`}
                     onClick={() => setActiveFigmaTab("ai")}
                   >
-                    ✨ Gemini LLM Refined
+                     Gemini LLM Refined
                   </button>
                 </div>
 
@@ -1374,7 +1704,7 @@ function App() {
             <p style={{ fontSize: "13px", lineHeight: "1.5", color: "#cbd5e1" }}>
               The Knowledge Repo does not contain enough matching evidence for this request.
               <br /><br />
-              <strong>IR Status:</strong> {irEvaluationResult?.status}
+              <strong>Status:</strong> {irEvaluationResult?.status}
               <br />
               <strong>Relevance Score:</strong> {Math.round((irEvaluationResult?.relevance || 0) * 100)}% | <strong>Coverage:</strong> {Math.round((irEvaluationResult?.coverage || 0) * 100)}%
               <br /><br />
@@ -1419,7 +1749,7 @@ function App() {
       )}
 
       {/* =======================================================
-          MODAL 1: INGESTED KNOWLEDGE BASE INSPECTOR (WITH SQL DB)
+          MODAL 1: INGESTED KNOWLEDGE BASE INSPECTOR
           ======================================================= */}
       {isKnowledgeBaseOpen && (
         <div 
@@ -1456,7 +1786,6 @@ function App() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #334155", paddingBottom: "12px" }}>
               <h3 style={{ margin: 0, fontSize: "16px", color: "#38bdf8", display: "flex", alignItems: "center", gap: "8px" }}>
                 <span>📚</span> Ingested Knowledge Base Repository
@@ -1562,8 +1891,6 @@ function App() {
 
             {/* Content Body */}
             <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px" }}>
-              
-              {/* Status Header Overview */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div style={{ backgroundColor: "#1e293b", padding: "10px", borderRadius: "6px", border: "1px solid #334155" }}>
                   <span style={{ fontSize: "10.5px", color: "#94a3b8", textTransform: "uppercase" }}>Ingestion Status</span>
@@ -1579,7 +1906,6 @@ function App() {
                 </div>
               </div>
 
-              {/* Source Thumbnail Preview */}
               {imagePreview && (
                 <div>
                   <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "bold", display: "block", marginBottom: "6px" }}>
@@ -1596,18 +1922,17 @@ function App() {
                 </div>
               )}
 
-              {/* Ingested JSON Schema */}
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                   <span style={{ fontSize: "11px", color: "#f59e0b", fontWeight: "bold" }}>
-                    EXTRACTED HIERARCHICAL DESIGNIR JSON:
+                    EXTRACTED UI STRUCTURE:
                   </span>
                   {uiJsonOutput && (
                     <button 
                       onClick={() => copyToClipboard(uiJsonOutput)}
                       style={{ background: "#334155", color: "#38bdf8", border: "none", borderRadius: "4px", padding: "2px 8px", fontSize: "10px", cursor: "pointer" }}
                     >
-                      Copy JSON
+                      Copy UI Structure
                     </button>
                   )}
                 </div>
@@ -1686,10 +2011,9 @@ function App() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #334155", paddingBottom: "12px" }}>
               <h3 style={{ margin: 0, fontSize: "16px", color: "#38bdf8", display: "flex", alignItems: "center", gap: "8px" }}>
-                <span>⚡</span> Synthesis Engine Deep Telemetry & Architecture
+                <span>⚡</span> Synthesis Engine Architecture & Telemetry
               </h3>
               <button 
                 onClick={() => setIsEngineModalOpen(false)}
@@ -1706,7 +2030,6 @@ function App() {
               </button>
             </div>
 
-            {/* Engine Name */}
             <div>
               <span style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: "bold" }}>
                 Active Model Tier & Engine
@@ -1726,10 +2049,9 @@ function App() {
               </div>
             </div>
 
-            {/* Elaborated Context & Description */}
             <div>
               <span style={{ fontSize: "11px", color: "#f59e0b", textTransform: "uppercase", fontWeight: "bold" }}>
-                Elaborated Synthesis Pipeline Description
+                Synthesis Pipeline Architectural Context
               </span>
               <div style={{ 
                 marginTop: "6px",
@@ -1756,7 +2078,6 @@ function App() {
               </div>
             </div>
 
-            {/* Modal Close Button */}
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
               <button 
                 onClick={() => setIsEngineModalOpen(false)}

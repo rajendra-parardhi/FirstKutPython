@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auth Screen</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: #6b4a6a;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .app-card {
+      position: relative;
+      width: 100%;
+      max-width: 738px;
+      background-color: #6b4a6a;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Decorative Shapes */
+    .shape-top-left {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 144px;
+      height: 134px;
+      background-color: #d5a6c9;
+      border-bottom-right-radius: 32px;
+      z-index: 1;
+    }
+
+    .shape-container-right {
+      position: absolute;
+      top: 20px;
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-end;
+      z-index: 1;
+    }
+
+    .shape-right-1 {
+      width: 148px;
+      height: 87px;
+      background-color: #7b4568;
+      border-top-left-radius: 16px;
+      border-bottom-left-radius: 16px;
+    }
+
+    .shape-right-2 {
+      width: 148px;
+      height: 90px;
+      background-color: #b16a8d;
+      border-top-left-radius: 16px;
+      border-bottom-left-radius: 16px;
+    }
+
+    .shape-right-3 {
+      width: 148px;
+      height: 144px;
+      background-color: #c66c89;
+      border-top-left-radius: 16px;
+    }
+
+    /* Main Content */
+    .content-container {
+      position: relative;
+      z-index: 2;
+      padding: 2.5rem 1.5rem;
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    .auth-card {
+      flex: 1;
+      min-width: 260px;
+      max-width: 320px;
+      padding: 1.5rem;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .card-welcome {
+      background-color: #423341;
+    }
+
+    .card-signup {
+      background-color: #423242;
+    }
+
+    .card-title {
+      color: #ffffff;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      text-align: center;
+    }
+
+    .divider {
+      height: 4px;
+      width: 40px;
+      border-radius: 2px;
+      margin-bottom: 1.5rem;
+    }
+
+    .divider-welcome {
+      background-color: #554c5b;
+    }
+
+    .divider-signup {
+      background-color: #483f4d;
+    }
+
+    .form-group {
+      width: 100%;
+      margin-bottom: 0.75rem;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background-color: rgba(0, 0, 0, 0.2);
+      color: #ffffff;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    .form-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .form-input:focus {
+      border-color: rgba(255, 255, 255, 0.3);
+      background-color: rgba(0, 0, 0, 0.3);
+    }
+
+    .auth-btn {
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #ffffff;
+      cursor: pointer;
+      margin-top: 0.75rem;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .auth-btn:hover {
+      opacity: 0.9;
+    }
+
+    .auth-btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-welcome {
+      background-color: #c0648d;
+    }
+
+    .btn-signup {
+      background-color: #c2658f;
+    }
+
+    /* Bottom Accent Bar */
+    .footer-accent {
+      height: 16px;
+      width: 100%;
+      background-color: #c95c62;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="app-card">
+    <!-- Decorative background elements -->
+    <div class="shape-top-left"></div>
+    <div class="shape-container-right">
+      <div class="shape-right-1"></div>
+      <div class="shape-right-2"></div>
+      <div class="shape-right-3"></div>
+    </div>
+
+    <!-- Main Auth Content -->
+    <section class="content-container">
+      <!-- Welcome Back Card -->
+      <article class="auth-card card-welcome">
+        <h2 class="card-title">Welcome Back</h2>
+        <div class="divider divider-welcome"></div>
+        <div class="form-group">
+          <input type="text" class="form-input" placeholder="Email / Username" />
+        </div>
+        <div class="form-group">
+          <input type="password" class="form-input" placeholder="Password" />
+        </div>
+        <button class="auth-btn btn-welcome">Sign In</button>
+      </article>
+
+      <!-- Get Started Free Card -->
+      <article class="auth-card card-signup">
+        <h2 class="card-title">Get Started Free</h2>
+        <div class="divider divider-signup"></div>
+        <div class="form-group">
+          <input type="text" class="form-input" placeholder="Email / Username" />
+        </div>
+        <div class="form-group">
+          <input type="password" class="form-input" placeholder="Password" />
+        </div>
+        <button class="auth-btn btn-signup">Sign Up</button>
+      </article>
+    </section>
+
+    <!-- Footer Bar -->
+    <footer class="footer-accent"></footer>
+  </main>
+
+</body>
+</html>

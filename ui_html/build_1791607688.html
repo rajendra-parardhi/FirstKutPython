@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspirational Quote Canvas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,400&family=Montserrat:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #8d7268;
+      font-family: 'Montserrat', sans-serif;
+      padding: 20px;
+    }
+
+    /* Root Canvas container mimicking bounding box proportions [979x979] */
+    .design-root {
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      aspect-ratio: 1 / 1;
+      background-color: #9d8076;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Absolute components calculated in % relative to 979px canvas */
+    .comp-1 {
+      position: absolute;
+      top: 0%;
+      left: 0%;
+      width: 100%;
+      height: 12.257%; /* 120/979 */
+      background-color: #987568;
+    }
+
+    .comp-7 {
+      position: absolute;
+      top: 75.076%; /* 735/979 */
+      left: 0%;
+      width: 100%;
+      height: 12.257%; /* 120/979 */
+      background-color: #917b75;
+    }
+
+    .comp-6 {
+      position: absolute;
+      top: 28.294%; /* 277/979 */
+      left: 34.933%; /* 342/979 */
+      width: 14.811%; /* 145/979 */
+      height: 18.896%; /* 185/979 */
+      background-color: #888490;
+      border-radius: 8px;
+      opacity: 0.85;
+    }
+
+    .comp-2 {
+      position: absolute;
+      top: 32.788%; /* 321/979 */
+      left: 43.820%; /* 429/979 */
+      width: 6.026%;  /* 59/979 */
+      height: 7.763%;  /* 76/979 */
+      background-color: #6d778f;
+      border-radius: 6px;
+      opacity: 0.9;
+    }
+
+    .comp-4 {
+      position: absolute;
+      top: 38.917%; /* 381/979 */
+      left: 36.567%; /* 358/979 */
+      width: 6.639%;  /* 65/979 */
+      height: 6.945%;  /* 68/979 */
+      background-color: #9695a5;
+      border-radius: 6px;
+    }
+
+    .comp-0 {
+      position: absolute;
+      top: 39.121%; /* 383/979 */
+      left: 42.594%; /* 417/979 */
+      width: 5.209%;  /* 51/979 */
+      height: 8.171%;  /* 80/979 */
+      background-color: #737d96;
+      border-radius: 4px;
+    }
+
+    .comp-5 {
+      position: absolute;
+      top: 53.932%; /* 528/979 */
+      left: 42.185%; /* 413/979 */
+      width: 4.494%;  /* 44/979 */
+      height: 7.967%;  /* 78/979 */
+      background-color: #927a73;
+      border-radius: 4px;
+    }
+
+    .comp-8 {
+      position: absolute;
+      top: 57.303%; /* 561/979 */
+      left: 60.470%; /* 592/979 */
+      width: 2.451%;  /* 24/979 */
+      height: 4.290%;  /* 42/979 */
+      background-color: #9a807a;
+    }
+
+    .comp-9 {
+      position: absolute;
+      top: 25.025%; /* 245/979 */
+      left: 87.231%; /* 854/979 */
+      width: 0.306%;  /* 3/979 */
+      height: 4.596%;  /* 45/979 */
+      background-color: #98786b;
+    }
+
+    /* Content Layout for quote text */
+    .quote-content {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12% 8%;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .quote-top {
+      color: #f5ebe6;
+      font-size: clamp(14px, 3.5vw, 22px);
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-align: center;
+      line-height: 1.3;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .quote-bottom {
+      color: #fff8f5;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(18px, 4.5vw, 30px);
+      font-style: italic;
+      font-weight: 400;
+      text-align: center;
+      line-height: 1.3;
+      letter-spacing: 0.5px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Root Component (Text Container) -->
+  <div class="design-root" id="comp-3">
+    <!-- Top & Bottom Structure Bands -->
+    <div class="comp-1" id="comp-1"></div>
+    <div class="comp-7" id="comp-7"></div>
+
+    <!-- Center Decorative Graphics Elements -->
+    <div class="comp-6" id="comp-6"></div>
+    <div class="comp-2" id="comp-2"></div>
+    <div class="comp-4" id="comp-4"></div>
+    <div class="comp-0" id="comp-0"></div>
+    <div class="comp-5" id="comp-5"></div>
+    <div class="comp-8" id="comp-8"></div>
+    <div class="comp-9" id="comp-9"></div>
+
+    <!-- Quote Overlay Text -->
+    <div class="quote-content">
+      <h1 class="quote-top">Let go of what weighs you down</h1>
+      <p class="quote-bottom">Focus on what feeds your soul</p>
+    </div>
+  </div>
+
+</body>
+</html>
