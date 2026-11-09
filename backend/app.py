@@ -64,7 +64,7 @@ except RuntimeError as re_err:
     raise re_err
 
 import faiss
-import easyocr
+from rapidocr import RapidOCR
 from sentence_transformers import SentenceTransformer
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 
@@ -133,9 +133,9 @@ if GEMINI_AVAILABLE and GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
     print("--- Connected to Gemini API successfully ---")
 
-# Initialize Models
+# Initialize Vision & OCR Models
 print(f"--- System Initializing Backend on {DEVICE} ---")
-reader = easyocr.Reader(['en'], gpu=(DEVICE == "cuda"))
+rapid_ocr = RapidOCR()
 
 # Load segment anything model
 model_type = "vit_b"
@@ -153,14 +153,14 @@ memory_metadata = []
 # --- UTILITY & CLEANING FUNCTIONS ---
 
 def standardize_for_sam(img_np):
-    target_size = 512 
+    target_size = 512
     h, w = img_np.shape[:2]
     scale = target_size / max(h, w)
     new_h, new_w = int(h * scale), int(w * scale)
     resized = cv2.resize(img_np, (new_w, new_h))
     pad_h, pad_w = target_size - new_h, target_size - new_w
     top, left = pad_h // 2, pad_w // 2
-    padded = cv2.copyMakeBorder(resized, top, pad_h - top, left, pad_w - left, 
+    padded = cv2.copyMakeBorder(resized, top, pad_h - top, left, pad_w - left,
                                 cv2.BORDER_CONSTANT, value=[0, 0, 0])
     return padded, {"top": top, "left": left, "scale": scale, "orig_h": h, "orig_w": w}
 
@@ -169,32 +169,46 @@ def clean_text(text: str) -> str:
     cleaned = re.sub(r'[^a-zA-Z0-9\s]', '', text)
     return " ".join(cleaned.split())
 
+def extract_flat_text_from_ocr_data(ocr_texts):
+    """Safely extracts plain strings whether ocr_texts contains dicts or strings."""
+    flat_strings = []
+    for sublist in ocr_texts:
+        for item in sublist:
+            if isinstance(item, dict):
+                text_val = item.get("text", "")
+                if text_val:
+                    flat_strings.append(text_val)
+            elif isinstance(item, str) and item:
+                flat_strings.append(item)
+    return flat_strings
+
 def create_composite_embedding(img_np, ocr_texts, masks):
     # 1. Visual (CLIP) - Output: 512 dim
     img_t = clip_preprocess(Image.fromarray(img_np)).unsqueeze(0).to(DEVICE)
     with torch.no_grad():
         vis_emb = clip_model.encode_image(img_t).cpu().numpy()[0]
-    
+   
     # 2. Text/Structural (Nemotron-3-Embed)
-    combined_text = " ".join([t for sublist in ocr_texts for t in sublist])
+    flat_text_list = extract_flat_text_from_ocr_data(ocr_texts)
+    combined_text = " ".join(flat_text_list)
     full_text_emb = nemotron_model.encode(combined_text if combined_text else "empty")
-    text_emb = full_text_emb[:324] 
-    
+    text_emb = full_text_emb[:324]
+   
     # 3. Layout (Normalized BBox centers) - Output: 60 dim
     layout_features = []
     for m in masks[:15]:
         x, y, w, h = m['bbox']
         layout_features.extend([x/1024, y/1024, w/1024, h/1000])
-    while len(layout_features) < 60: 
+    while len(layout_features) < 60:
         layout_features.append(0)
     layout_emb = np.array(layout_features[:60])
-    
+   
     # 4. Concatenate: 512 + 324 + 60 = 896
     composite = np.concatenate([vis_emb, text_emb, layout_emb])
-    
+   
     # Return normalized vector
     norm = np.linalg.norm(composite)
-    if norm == 0: 
+    if norm == 0:
         return composite
     return composite / norm
 
@@ -203,7 +217,7 @@ def build_faiss_index():
     global memory_metadata, index
     index = faiss.IndexFlatIP(896)
     memory_metadata = []
-    
+   
     img_dir = str(IMAGES_DIR)
     if os.path.exists(img_dir):
         for file in os.listdir(img_dir):
@@ -229,11 +243,11 @@ def save_to_memory(img_np, ui_json_str, flutter, html, ocr_texts, masks):
         embedding = create_composite_embedding(img_np, ocr_texts, masks)
         timestamp = str(time.time())
         base_name = f"ui_{timestamp}"
-        
+       
         # Save files
         img_path = str(IMAGES_DIR / f"{base_name}.png")
         cv2.imwrite(img_path, cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR))
-        
+       
         # Save to ChromaDB
         collection.add(
             ids=[base_name],
@@ -295,10 +309,6 @@ def calculate_hybrid_similarity(new_ir, candidate_ir, new_img, candidate_img):
 
 # --- ENHANCED IR EVALUATION & COVERAGE ENGINE ---
 def evaluate_ir_coverage_and_relevance(query_emb: np.ndarray, ui_json_str: str) -> Dict[str, Any]:
-    """
-    Evaluates multi-modal relevance and requirement coverage against the Knowledge Repo.
-    Returns normalized scores (0.0 to 1.0), classification, and unresolved requirements.
-    """
     try:
         current_ir = json.loads(ui_json_str) if isinstance(ui_json_str, str) else ui_json_str
     except Exception:
@@ -334,15 +344,15 @@ def evaluate_ir_coverage_and_relevance(query_emb: np.ndarray, ui_json_str: str) 
 
     candidate = results['metadatas'][0][0]
     distance = results.get('distances', [[0.2]])[0][0] if results.get('distances') else 0.2
-    
+   
     # Normalized Cosine Relevance Score: [0.0 - 1.0]
     relevance_score = max(0.0, min(1.0, 1.0 - (float(distance) / 2.0)))
-    
+   
     # Requirement coverage evaluation based on actual component structure
     candidate_json = json.loads(candidate.get('json_data', '{}'))
     candidate_elements = candidate_json.get("root_components", [])
     candidate_types = [c.get("type", "container") for c in candidate_elements]
-    
+   
     unresolved = []
     matched_count = 0
     for req in req_types:
@@ -377,12 +387,12 @@ def step_1_sam(input_img):
     img_np = np.array(input_img)
     padded_img, meta = standardize_for_sam(img_np)
     print("DEBUG: Generating masks...")
-    
+   
     masks = mask_generator.generate(padded_img)
     print(f"DEBUG: SAM completed with {len(masks)} masks.")
     import gc
-    gc.collect() 
-    
+    gc.collect()
+   
     for m in masks:
         x, y, w, h = m['bbox']
         m['bbox'] = [
@@ -391,74 +401,93 @@ def step_1_sam(input_img):
             int(w / meta['scale']),
             int(h / meta['scale'])
         ]
-    
+   
     return padded_img, masks, img_np, meta
 
 def step_2_ocr(masks, ocr_img):
+    """
+    RapidOCR text extraction: accurately preserves geometry coordinates,
+    confidence metrics, and calculates proportional font size estimates.
+    """
     if not masks:
         return [], [], "No masks found."
     if ocr_img is None:
         return [], [], "No OCR image found."
-        
+       
     ocr_img_np = np.array(ocr_img)
-    ocr_results = reader.readtext(ocr_img_np)
-    assigned_texts = [[] for _ in range(len(masks))]
-    
-    for bbox, text, prob in ocr_results:
+    result = rapid_ocr(ocr_img_np)
+   
+    assigned_text_objects = [[] for _ in range(len(masks))]
+   
+    if not result or result.boxes is None or not result.txts:
+        return assigned_text_objects, assigned_text_objects, "Step 2 Done: No text detected"
+   
+    # Iterate through exact detection boxes, text lines, and confidence values
+    for bbox, text, prob in zip(result.boxes, result.txts, result.scores):
         xs = [pt[0] for pt in bbox]
         ys = [pt[1] for pt in bbox]
-        tx_min, tx_max = min(xs), max(xs)
-        ty_min, ty_max = min(ys), max(ys)
-        text_area = (tx_max - tx_min) * (ty_max - ty_min)
-        
+        tx_min, tx_max = int(min(xs)), int(max(xs))
+        ty_min, ty_max = int(min(ys)), int(max(ys))
+        tw = max(1, tx_max - tx_min)
+        th = max(1, ty_max - ty_min)
+        text_area = tw * th
+       
+        cleaned = clean_text(text)
+        if not cleaned:
+            continue
+
+        text_item = {
+            "text": cleaned,
+            "bbox": [tx_min, ty_min, tw, th],
+            "font_size_est": max(8, int(th * 0.82)),
+            "confidence": round(float(prob), 2)
+        }
+       
         best_idx = -1
         min_mask_area = float('inf')
-        
+       
+        # 1. Match against SAM segment masks via Intersection over Area
         for idx, m in enumerate(masks):
             mx, my, mw, mh = m['bbox']
-            mx_min, my_min, mx_max, my_max = mx, my, mx + mw, my + mh
-            
-            ix_min = max(tx_min, mx_min)
-            iy_min = max(ty_min, my_min)
-            ix_max = min(tx_max, mx_max)
-            iy_max = min(ty_max, my_max)
-            
+           
+            ix_min = max(tx_min, mx)
+            iy_min = max(ty_min, my)
+            ix_max = min(tx_max, mx + mw)
+            iy_max = min(ty_max, my + mh)
+           
             if ix_max > ix_min and iy_max > iy_min:
                 overlap_area = (ix_max - ix_min) * (iy_max - iy_min)
-                if overlap_area > (text_area * 0.4):
+                if overlap_area > (text_area * 0.35):
                     mask_area = mw * mh
                     if mask_area < min_mask_area:
                         min_mask_area = mask_area
                         best_idx = idx
-                        
+                       
         if best_idx != -1:
-            cleaned = clean_text(text)
-            if cleaned:
-                assigned_texts[best_idx].append(cleaned)
+            assigned_text_objects[best_idx].append(text_item)
         else:
-            t_cx = (tx_min + tx_max) / 2
-            t_cy = (ty_min + ty_max) / 2
+            # 2. Geometric fallback: pair to the closest mask center
+            t_cx = tx_min + tw / 2.0
+            t_cy = ty_min + th / 2.0
             min_dist = float('inf')
             closest_idx = 0
             for idx, m in enumerate(masks):
                 mx, my, mw, mh = m['bbox']
-                m_cx = mx + mw/2
-                m_cy = my + mh/2
+                m_cx = mx + mw / 2.0
+                m_cy = my + mh / 2.0
                 dist = (t_cx - m_cx)**2 + (t_cy - m_cy)**2
                 if dist < min_dist:
                     min_dist = dist
                     closest_idx = idx
-            cleaned = clean_text(text)
-            if cleaned:
-                assigned_texts[closest_idx].append(cleaned)
+            assigned_text_objects[closest_idx].append(text_item)
 
-    return assigned_texts, assigned_texts, "Step 2 Done: OCR Finished"
+    return assigned_text_objects, assigned_text_objects, "Step 2 Done: RapidOCR Finished"
 
 def step_3_color(masks, img_np):
     colors_hex = []
     colors_rgb_str = []
     img_h, img_w = img_np.shape[:2]
-    
+   
     for m in masks:
         x, y, w, h = [int(v) for v in m["bbox"]]
         x1, y1, x2, y2 = max(0, x), max(0, y), min(img_w, x + w), min(img_h, y + h)
@@ -475,11 +504,11 @@ def step_3_color(masks, img_np):
             crop = cv2.cvtColor(crop, cv2.COLOR_RGBA2RGB)
 
         mean = crop.mean(axis=(0,1)).astype(int)
-        
+       
         r = mean[0] if len(mean) > 0 else 255
         g = mean[1] if len(mean) > 1 else 255
         b = mean[2] if len(mean) > 2 else 255
-        
+       
         colors_hex.append('#{:02x}{:02x}{:02x}'.format(r, g, b))
         colors_rgb_str.append(f"rgb({r}, {g}, {b})")
 
@@ -488,17 +517,12 @@ def step_3_color(masks, img_np):
 # --- GEMINI DYNAMIC MODEL GENERATION STAGE (ELABORATE SYNTHESIS ENGINE) ---
 
 def generate_code_with_gemini_model(model_name: str, ui_json_str: str, unresolved: list = None) -> tuple:
-    """
-    Synthesizes responsive HTML/CSS and Flutter layout code blocks using the specified Gemini model tier.
-    Features an elaborate, production-grade architectural prompt with strict styling and hierarchy rules.
-    """
     if not GEMINI_AVAILABLE or not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_API_KEY_HERE":
         print("CRITICAL WARNING: Gemini API Key has not been configured in the environment.")
         return "/* Code synthesis failed: Missing Gemini API Key. */", "<!-- Code synthesis failed: Missing Gemini API Key -->"
-        
+       
     unresolved_note = f"\nUnresolved specifications to satisfy:\n{', '.join(unresolved)}" if unresolved else ""
-    
-    # Elaborated, comprehensive instruction engine
+   
     system_instruction = (
         "You are an Elite Frontend Architect and Senior Flutter Mobile Engineer specializing in pixel-accurate, "
         "production-ready UI reverse-engineering from hierarchical DesignIR specifications.\n\n"
@@ -509,11 +533,11 @@ def generate_code_with_gemini_model(model_name: str, ui_json_str: str, unresolve
         "   - For Flutter: Translate nested structures into proper Column, Row, Stack, Container, and Padding trees.\n"
         "   - For HTML/CSS: Translate into clean semantic HTML5 (<header>, <nav>, <main>, <section>, <article>, <footer>) "
         "     with modern CSS Flexbox and Grid layouts.\n\n"
-        "2. VISUAL STYLING & CONSTRAINT RESOLUTION:\n"
+        "2. VISUAL STYLING & TYPOGRAPHY RESOLUTION:\n"
         "   - Use exact 'hex_color' attributes for backgrounds, text colors, and borders.\n"
         "   - Use 'bbox' coordinate boxes to derive proportions, margins, alignments, and aspect ratios. "
         "     NEVER use fragile fixed pixel heights on overall viewports; use flexible, fluid responsive units (rem, %, flex).\n"
-        "   - Honor 'label' strings as exact typography content. Apply font weights, line heights, and letter spacing appropriately.\n"
+        "   - Honor 'typography' items: inspect their exact 'font_size_est', 'alignment' ('left'|'center'|'right'), and exact wording.\n"
         "   - Buttons must have interactive hover/focus pseudo-classes or InkWell ripple handlers.\n"
         "   - Inputs must include proper placeholder texts, borders, rounded radii, and focus outlines.\n\n"
         "3. PRODUCTION-GRADE CODE SPECIFICATION:\n"
@@ -537,10 +561,10 @@ def generate_code_with_gemini_model(model_name: str, ui_json_str: str, unresolve
         )
         response = model.generate_content(user_prompt)
         response_text = response.text
-        
+       
         if not response_text:
             raise ValueError("Empty response received from Google Generative AI gateway.")
-            
+           
     except Exception as gemini_err:
         print(f"ERROR: Gemini synthesis failed on model tier '{model_name}': {str(gemini_err)}")
         traceback.print_exc()
@@ -555,7 +579,7 @@ def generate_code_with_gemini_model(model_name: str, ui_json_str: str, unresolve
     flutter_match = re.search(r"\[FLUTTER_START\](.*?)\[FLUTTER_END\]", response_text, re.DOTALL | re.IGNORECASE)
     if flutter_match:
         flutter_part = flutter_match.group(1).strip()
-        
+       
     html_match = re.search(r"\[HTML_START\](.*?)\[HTML_END\]", response_text, re.DOTALL | re.IGNORECASE)
     if html_match:
         html_part = html_match.group(1).strip()
@@ -575,7 +599,7 @@ def generate_code_with_gemini_model(model_name: str, ui_json_str: str, unresolve
 
     flutter_part = re.sub(r"^```(?:dart|flutter)?\s*", "", flutter_part)
     flutter_part = re.sub(r"\s*```$", "", flutter_part).strip()
-    
+   
     html_part = re.sub(r"^```(?:html|xml)?\s*", "", html_part)
     html_part = re.sub(r"\s*```$", "", html_part).strip()
 
@@ -587,31 +611,26 @@ def generate_code_with_gemini_model(model_name: str, ui_json_str: str, unresolve
     return flutter_part, html_part
 
 def step_4_and_orchestrate(img_np, ui_json_str, texts, masks):
-    """
-    Routes code synthesis requests based on design similarity scoring with elaborate telemetry.
-    """
     query_emb = create_composite_embedding(img_np, texts, masks)
     results = collection.query(query_embeddings=[query_emb.tolist()], n_results=1)
-    
+   
     similarity = 0.0
     candidate = None
-    
+   
     if results and 'metadatas' in results and results['metadatas'][0]:
         candidate = results['metadatas'][0][0]
         candidate_json = candidate.get('json_data', '{}')
         similarity = calculate_hybrid_similarity(ui_json_str, candidate_json, img_np, None)
-    
-    # Cache hit verification
+   
     if similarity >= 90.0 and candidate:
         return (
-            candidate.get('flutter_code', ''), 
-            candidate.get('html_code', ''), 
+            candidate.get('flutter_code', ''),
+            candidate.get('html_code', ''),
             f"Cache Hit | Similarity Score: {round(similarity, 1)}%",
             "gemini-cached",
             f"Certified Full Match (Similarity {round(similarity, 1)}% >= 90%). Direct retrieval of certified component assets from ChromaDB vector store for zero-latency execution."
         )
-        
-    # Dynamic routing and elaborate rationale setup
+       
     if similarity < 60.0:
         model_name = CODE_MODEL
         reason = (
@@ -637,33 +656,68 @@ def step_4_and_orchestrate(img_np, ui_json_str, texts, masks):
             f"Synthesis Engine Analysis: Near-target component match ({round(similarity, 1)}%). "
             f"Executing high-speed differential code compilation with {CODE_MODEL}."
         )
-        
+       
     print(f"Routing logic: selected model '{model_name}' for score {round(similarity, 1)}%")
     flutter, html = generate_code_with_gemini_model(model_name, ui_json_str)
-    
+   
     try:
         save_to_memory(img_np, ui_json_str, flutter, html, texts, masks)
     except Exception as save_err:
         print(f"Database Cache Write Warning: {save_err}")
-        
+       
     return flutter, html, f"Synthesized with Gemini ({model_name}) | Similarity: {round(similarity, 1)}%", model_name, reason
 
 def step_5_json(masks, texts, colors_hex, colors_rgb_str, img_np):
+    """
+    Constructs the Enriched DesignIR JSON AST with precise typography coordinates,
+    font sizes, color mappings, and parent-child container hierarchy.
+    """
     if not masks:
         return "{}", "{}", "No elements generated."
-    
+   
     components = []
-    
+   
     for i in range(len(masks)):
         bbox = masks[i]['bbox']
-        text_list = texts[i] if i < len(texts) else []
-        joined_text = " ".join(text_list)
-        
+        raw_text_items = texts[i] if i < len(texts) else []
+       
+        # Build normalized typography objects
+        typography_list = []
+        label_parts = []
+        for t in raw_text_items:
+            if isinstance(t, dict):
+                label_parts.append(t.get("text", ""))
+                # Compute alignment relative to this component's horizontal center
+                comp_x, _, comp_w, _ = bbox
+                tx, _, tw, _ = t.get("bbox", [comp_x, 0, comp_w, 0])
+                if comp_w > 0:
+                    t_center = tx + tw / 2.0
+                    c_center = comp_x + comp_w / 2.0
+                    offset = abs(t_center - c_center)
+                    if offset < (comp_w * 0.16):
+                        align_str = "center"
+                    elif tx < (comp_x + comp_w * 0.35):
+                        align_str = "left"
+                    else:
+                        align_str = "right"
+                else:
+                    align_str = "left"
+               
+                t_copy = dict(t)
+                t_copy["alignment"] = align_str
+                typography_list.append(t_copy)
+            elif isinstance(t, str) and t.strip():
+                label_parts.append(t)
+                typography_list.append({"text": t, "alignment": "left"})
+
+        joined_label = " ".join([lp for lp in label_parts if lp])
+       
         components.append({
             "id": i,
             "type": "container",
             "bbox": [int(v) for v in bbox],
-            "label": joined_text,
+            "label": joined_label,
+            "typography": typography_list,
             "hex_color": colors_hex[i] if i < len(colors_hex) else "#FFFFFF",
             "rgb_color": colors_rgb_str[i] if i < len(colors_rgb_str) else "rgb(255,255,255)",
             "visual_features": {
@@ -674,7 +728,7 @@ def step_5_json(masks, texts, colors_hex, colors_rgb_str, img_np):
         })
 
     components.sort(key=lambda c: (c['bbox'][2] * c['bbox'][3]), reverse=True)
-    
+   
     root_elements = []
     for i in range(len(components)):
         is_child = False
@@ -682,8 +736,8 @@ def step_5_json(masks, texts, colors_hex, colors_rgb_str, img_np):
             if i == j: continue
             b1 = components[i]['bbox']
             b2 = components[j]['bbox']
-            if (b1[0] >= b2[0] and b1[1] >= b2[1] and 
-                (b1[0]+b1[2]) <= (b2[0]+b2[2]) and 
+            if (b1[0] >= b2[0] and b1[1] >= b2[1] and
+                (b1[0]+b1[2]) <= (b2[0]+b2[2]) and
                 (b1[1]+b1[3]) <= (b2[1]+b2[3])):
                 components[j]['children'].append(components[i])
                 is_child = True
@@ -693,50 +747,54 @@ def step_5_json(masks, texts, colors_hex, colors_rgb_str, img_np):
 
     def classify(comp):
         lower_text = comp['label'].lower()
-        if any(kw in lower_text for kw in ["login", "submit", "button", "next"]): comp['type'] = "button"
-        elif any(kw in lower_text for kw in ["email", "password", "input", "search"]): comp['type'] = "input"
-        elif comp['label']: comp['type'] = "text"
-        for child in comp['children']: classify(child)
+        has_center_typo = any(t.get("alignment") == "center" for t in comp.get("typography", []))
+       
+        if any(kw in lower_text for kw in ["login", "submit", "button", "next", "sign in", "sign up", "continue"]):
+            comp['type'] = "button"
+        elif any(kw in lower_text for kw in ["email", "password", "input", "search", "enter "]):
+            comp['type'] = "input"
+        elif has_center_typo and len(comp.get("children", [])) == 0 and comp["bbox"][3] < 70:
+            comp['type'] = "button"
+        elif comp['label']:
+            comp['type'] = "text"
+           
+        for child in comp['children']:
+            classify(child)
 
-    for root in root_elements: classify(root)
+    for root in root_elements:
+        classify(root)
 
     design_ir = {
         "ir_type": "DesignIR_Enriched",
         "metadata": {
             "total_elements": len(components),
-            "image_size": [img_np.shape[1], img_np.shape[0]]
+            "image_size": [img_np.shape[1], img_np.shape[0]],
+            "ocr_engine": "RapidOCR-ONNX"
         },
         "root_components": root_elements
     }
-    
+   
     return json.dumps(design_ir, indent=2), json.dumps(design_ir), "Step 5 Done: Enriched Hierarchical JSON"
 
 def step_6_code(ui_json_str, cached_flutter, cached_html, img_np, match_id, texts, masks):
-    """
-    Standard generation entrypoint. Serves standard bulk-ingest pipelines with configured model.
-    """
     if match_id and match_id != "New Screen Identified":
         return cached_flutter, cached_html, f"Database Cache Hit (Matched: {match_id})"
-        
+       
     flutter, html = generate_code_with_gemini_model(CODE_MODEL, ui_json_str)
-    
+   
     try:
         save_to_memory(img_np, ui_json_str, flutter, html, texts, masks)
     except Exception as save_err:
         print(f"Database Cache Write Warning: {save_err}")
-        
+       
     return flutter, html, f"Synthesized with Gemini API ({CODE_MODEL})"
 
 # --- HYBRID RENDERING ENGINE ---
 
 def render_html_to_image(html_code: str, ui_json_str: str) -> np.ndarray:
-    """
-    Renders synthesized semantic HTML/CSS code.
-    Attempts: Playwright (Chromium) -> html2image (Chrome) -> Blank Error Canvas.
-    """
     if "synthesis failed" in html_code or "synthesis offline" in html_code or "Failed to extract" in html_code:
         print("HTML Code Generation Failed. Showing generation failure canvas in comparison tab...")
-        
+       
         err_canvas = np.zeros((1024, 512, 3), dtype=np.uint8) + 245
         cv2.putText(err_canvas, "[HTML Synthesis Failed]", (50, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (50, 50, 200), 2)
         cv2.putText(err_canvas, "Similarity comparison is suspended", (50, 500), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 110, 120), 1)
@@ -745,7 +803,7 @@ def render_html_to_image(html_code: str, ui_json_str: str) -> np.ndarray:
 
     temp_html = str(DATA_DIR / "temp_render.html")
     temp_png = str(DATA_DIR / "temp_render.png")
-    
+   
     styled_html = f"""
     <!DOCTYPE html>
     <html>
@@ -774,7 +832,7 @@ def render_html_to_image(html_code: str, ui_json_str: str) -> np.ndarray:
         from playwright.sync_api import sync_playwright
         with open(temp_html, "w", encoding="utf-8") as f:
             f.write(styled_html)
-            
+           
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
@@ -783,7 +841,7 @@ def render_html_to_image(html_code: str, ui_json_str: str) -> np.ndarray:
             page.goto(f"file://{abs_path}")
             page.screenshot(path=temp_png, full_page=False)
             browser.close()
-            
+           
         if os.path.exists(temp_png):
             rendered_bgr = cv2.imread(temp_png)
             if rendered_bgr is not None:
@@ -799,9 +857,9 @@ def render_html_to_image(html_code: str, ui_json_str: str) -> np.ndarray:
         hti = Html2Image(custom_flags=['--no-sandbox', '--disable-gpu', '--headless', '--default-background-color=ffffff'])
         with open(temp_html, "w", encoding="utf-8") as f:
             f.write(styled_html)
-            
+           
         hti.screenshot(html_file=temp_html, save_as=temp_png, size=(512, 1024))
-        
+       
         if os.path.exists(temp_png):
             rendered_bgr = cv2.imread(temp_png)
             if rendered_bgr is not None:
@@ -820,24 +878,20 @@ def render_html_to_image(html_code: str, ui_json_str: str) -> np.ndarray:
     return empty_canvas
 
 def compare_images_clip(img1_np: np.ndarray, img2_np: np.ndarray) -> float:
-    """
-    Computes visual reconstruction similarity between standard design components
-    and synthetic model renderings using CLIP feature vector cosine distance.
-    """
     try:
         img1_pil = Image.fromarray(img1_np)
         img2_pil = Image.fromarray(img2_np)
-        
+       
         t1 = clip_preprocess(img1_pil).unsqueeze(0).to(DEVICE)
         t2 = clip_preprocess(img2_pil).unsqueeze(0).to(DEVICE)
-        
+       
         with torch.no_grad():
             f1 = clip_model.encode_image(t1)
             f2 = clip_model.encode_image(t2)
-            
+           
             f1 /= f1.norm(dim=-1, keepdim=True)
             f2 /= f2.norm(dim=-1, keepdim=True)
-            
+           
             cosine_similarity = (f1 @ f2.T).item()
             percentage_similarity = round(cosine_similarity * 100.0, 2)
             return max(0.0, min(100.0, percentage_similarity))
@@ -871,7 +925,6 @@ class GitRepoPayload(BaseModel):
     branch: str = "main"
 
 def require_api_key(x_api_key: Optional[str] = Header(None)):
-    """Shared-secret guard for every /api/* route when API_KEY is configured."""
     if not API_KEY:
         return
     if x_api_key != API_KEY:
@@ -882,7 +935,6 @@ app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
 
 @app.get("/health")
 def health():
-    """Readiness probe for Runpod healthchecks and uptime monitors."""
     active_jobs = sum(1 for j in JOBS.values() if j.get("status") in ("queued", "running"))
     return {
         "status": "ok",
@@ -957,7 +1009,6 @@ async def get_job(job_id: str, _=Depends(require_api_key)):
     return _job_view(job)
 
 class _StageLog(list):
-    """Stage log that mirrors itself into the polled job payload on every append."""
     def __init__(self, job):
         super().__init__()
         self._job = job
@@ -967,19 +1018,18 @@ class _StageLog(list):
         self._job["steps"] = [dict(s) for s in self]
         self._job["stage"] = f"Stage {entry.get('stage', '?')}: {entry.get('name', '')}"
 
-# --- Process UI Endpoint ---
+# --- Process UI Pipeline ---
 def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_only: bool = False) -> dict:
-    """Full screenshot pipeline. Runs inside a worker thread."""
     try:
         first_kut_logs = _StageLog(job)
         total_start_time = time.perf_counter()
         job["stage"] = "Stage 1/7: Knowledge Ingestion (SAM segmentation)"
-        
+       
         # --- STAGE 1: KNOWLEDGE INGESTION ---
         t_start = time.perf_counter()
         img_np = bytes_to_numpy(contents)
         pil_img = Image.fromarray(img_np)
-        
+       
         viz, masks, raw_np, _ = step_1_sam(pil_img)
         t_duration = time.perf_counter() - t_start
         first_kut_logs.append({
@@ -990,21 +1040,23 @@ def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_
             "status": "Success",
             "meta": f"Identified {len(masks)} structural mask regions."
         })
-        
-        # --- STAGE 2: KNOWLEDGE FOUNDRY ---
+       
+        # --- STAGE 2: KNOWLEDGE FOUNDRY (RAPIDOCR) ---
         t_start = time.perf_counter()
         texts, _, _ = step_2_ocr(masks, pil_img)
         colors_hex, colors_rgb_str, _ = step_3_color(masks, raw_np)
         t_duration = time.perf_counter() - t_start
+       
+        total_text_blocks = sum(len(sub) for sub in texts)
         first_kut_logs.append({
             "stage": 2,
             "name": "Knowledge Foundry",
-            "desc": "OCR extraction & Color profiling into unified design parameters.",
+            "desc": "RapidOCR polygon detection & Color extraction into unified parameters.",
             "duration": round(t_duration, 3),
             "status": "Success",
-            "meta": f"Normalized {len(texts)} text blocks and element color nodes."
+            "meta": f"Extracted {total_text_blocks} typography nodes and color properties."
         })
-        
+       
         # --- STAGE 3: KNOWLEDGE STRUCTURING & INDEXING ---
         t_start = time.perf_counter()
         ui_json, _, _ = step_5_json(masks, texts, colors_hex, colors_rgb_str, raw_np)
@@ -1018,7 +1070,7 @@ def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_
             "status": "Success",
             "meta": f"Formulated embedding coordinates: dim={len(comp_emb)}."
         })
-        
+       
         # --- STAGE 4: IR ENGINE EVALUATION & CLASSIFICATION ---
         t_start = time.perf_counter()
         ir_eval = evaluate_ir_coverage_and_relevance(comp_emb, ui_json)
@@ -1038,7 +1090,6 @@ def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_
             "meta": f"Result: {match_status} | Rel: {int(relevance_score*100)}% | Cov: {int(coverage_score*100)}%"
         })
 
-        # Check if evaluation-only mode
         if evaluate_only:
             return {
                 "status": f"IR Evaluation: {match_status}",
@@ -1054,7 +1105,7 @@ def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_
                 }
             }
 
-        # --- STAGE 5: INTELLIGENT ORCHESTRATION & SYNTHESIS (ELABORATE ENGINE) ---
+        # --- STAGE 5: INTELLIGENT ORCHESTRATION & SYNTHESIS ---
         t_start = time.perf_counter()
         if match_status == "FULL_MATCH" and candidate and not force_ai:
             flutter = candidate.get("flutter_code", "")
@@ -1062,8 +1113,7 @@ def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_
             model_used = "Knowledge-Repo-VectorDB"
             reasoning = (
                 f"Synthesis Engine Resolution: Certified Full Match (Relevance: {round(relevance_score*100, 1)}%, "
-                f"Coverage: {round(coverage_score*100, 1)}%). Direct instant retrieval of verified reusable components "
-                f"from local ChromaDB vector repository."
+                f"Coverage: {round(coverage_score*100, 1)}%). Direct retrieval of verified components from ChromaDB."
             )
             similarity_logs = f"Cache Hit | Similarity Score: {round(relevance_score*100, 1)}%"
             cache_hit = True
@@ -1072,8 +1122,7 @@ def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_
             reasoning = (
                 f"Synthesis Engine Resolution: Routed to {CODE_MODEL} based on {match_status} "
                 f"(Relevance: {round(relevance_score*100, 1)}%, Coverage: {round(coverage_score*100, 1)}%). "
-                f"Executing comprehensive multi-pass code synthesis: AST decomposition, hierarchical responsive "
-                f"flex/grid mapping, EasyOCR typography binding, and design token integration."
+                f"Synthesizing layout with RapidOCR typography boundaries, flexbox/grid hierarchy, and tokens."
             )
             flutter, html = generate_code_with_gemini_model(model_used, ui_json, unresolved)
             similarity_logs = f"Synthesized with Gemini ({model_used}) | Match: {match_status}"
@@ -1092,17 +1141,16 @@ def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_
             "status": "Success",
             "meta": f"Engine: {model_used}"
         })
-        
+       
         # --- STAGE 6: HTML VISUAL RENDERING AND CLIP ALIGNMENT CHECK ---
         t_start = time.perf_counter()
         rendered_np = render_html_to_image(html, ui_json)
-        
-        # Resize raw_np to match standard render sizes before CLIP evaluation
+       
         resized_original = cv2.resize(raw_np, (512, 1024))
         clip_visual_similarity = compare_images_clip(resized_original, rendered_np)
         rendered_b64 = numpy_to_base64(rendered_np)
         t_duration = time.perf_counter() - t_start
-        
+       
         first_kut_logs.append({
             "stage": 6,
             "name": "Visual Alignment Check",
@@ -1111,7 +1159,7 @@ def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_
             "status": "Success",
             "meta": f"Calculated visual reconstruction alignment score: {clip_visual_similarity}%"
         })
-        
+       
         # --- STAGE 7: PROMOTION GOVERNANCE ---
         t_start = time.perf_counter()
         if not cache_hit and (len(flutter) > 100 or len(html) > 100):
@@ -1126,6 +1174,7 @@ def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_
                 promotion_msg = f"Skipped local file storage: {str(fe)}"
         else:
             promotion_msg = "Asset exists in codebase directory. Skipped duplicate build export."
+           
         t_duration = time.perf_counter() - t_start
         first_kut_logs.append({
             "stage": 7,
@@ -1135,10 +1184,10 @@ def _process_ui_pipeline(job, contents: bytes, force_ai: bool = False, evaluate_
             "status": "Success",
             "meta": promotion_msg
         })
-        
+       
         total_duration = time.perf_counter() - total_start_time
         sam_preview_b64 = numpy_to_base64(viz)
-        
+       
         return {
             "status": "Completed FirstKutAI Pipeline Integration",
             "ir_match_status": match_status,
@@ -1190,7 +1239,6 @@ async def process_ui(
     evaluate_only: Optional[bool] = Form(False),
     _=Depends(require_api_key)
 ):
-    """Starts the screenshot pipeline as a background job and returns its job_id."""
     contents = await file.read()
     if not contents:
         raise HTTPException(status_code=400, detail="Empty file upload")
@@ -1206,7 +1254,6 @@ async def process_ui(
 INGEST_TMP_DIR = DATA_DIR / "tmp_ingest"
 
 def _ingest_folder_pipeline(job, entries):
-    """entries: list of (filename, staging_path). Runs inside a worker thread."""
     global ingestion_status
     results = {"processed": 0, "errors": []}
 
@@ -1252,7 +1299,6 @@ def _ingest_folder_pipeline(job, entries):
 
 @app.post("/api/ingest_folder")
 async def ingest_folder(files: List[UploadFile] = File(...), _=Depends(require_api_key)):
-    """Stages uploaded images on disk and ingests them as a background job."""
     INGEST_TMP_DIR.mkdir(parents=True, exist_ok=True)
     entries = []
     for upload in files:
@@ -1373,13 +1419,9 @@ async def ingest_document(file: UploadFile = File(...), _=Depends(require_api_ke
 # --- LOCAL DATABASE (SQLITE / SQL DUMP) INGESTION PIPELINE ---
 
 def _ingest_sql_pipeline(job, filename: str, contents: bytes):
-    """
-    Ingests local SQL dumps or SQLite database files into the knowledge vector store.
-    Extracts table schemas, column data types, foreign keys, and row records.
-    """
     extension = Path(filename).suffix.lower()
     chunks = []
-    
+   
     if extension in {".sqlite", ".db", ".sqlite3"}:
         with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as tmp_db:
             tmp_db.write(contents)
@@ -1388,21 +1430,20 @@ def _ingest_sql_pipeline(job, filename: str, contents: bytes):
         try:
             conn = sqlite3.connect(tmp_db_path)
             cursor = conn.cursor()
-            
+           
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
             tables = [row[0] for row in cursor.fetchall()]
-            
+           
             job["progress"] = {"current_file": filename, "processed": 0, "total": len(tables)}
-            
+           
             for t_idx, table_name in enumerate(tables):
                 cursor.execute(f"PRAGMA table_info({table_name});")
                 columns_info = cursor.fetchall()
                 col_defs = [f"{col[1]} ({col[2]})" for col in columns_info]
-                
-                # Fetch row preview
+               
                 cursor.execute(f"SELECT * FROM {table_name} LIMIT 25;")
                 sample_rows = cursor.fetchall()
-                
+               
                 table_doc = (
                     f"DATABASE SCHEMA & TABLE BLUEPRINT\n"
                     f"Source DB: {filename}\n"
@@ -1412,7 +1453,7 @@ def _ingest_sql_pipeline(job, filename: str, contents: bytes):
                 )
                 for r in sample_rows:
                     table_doc += f"{str(r)}\n"
-                    
+                   
                 chunks.append((table_doc, {
                     "source": filename,
                     "type": "database_table",
@@ -1427,7 +1468,6 @@ def _ingest_sql_pipeline(job, filename: str, contents: bytes):
             except OSError:
                 pass
     else:
-        # Standard .sql dump script ingestion
         text_content = contents.decode("utf-8", errors="ignore")
         statements = [stmt.strip() for stmt in text_content.split(";") if stmt.strip()]
         for stmt in statements:
@@ -1449,7 +1489,6 @@ def _ingest_sql_pipeline(job, filename: str, contents: bytes):
 
 @app.post("/api/kb/ingest_sql")
 async def ingest_sql_database(file: UploadFile = File(...), _=Depends(require_api_key)):
-    """Upload and ingest a local SQLite database (.sqlite, .db) or SQL schema dump (.sql)."""
     filename = Path(file.filename or "").name
     if Path(filename).suffix.lower() not in {".sqlite", ".db", ".sqlite3", ".sql"}:
         raise HTTPException(status_code=400, detail="Supported database formats are .sqlite, .db, and .sql")
@@ -1513,10 +1552,10 @@ async def ingest_github_repo(payload: GitRepoPayload, _=Depends(require_api_key)
 async def proxy_figma_file(file_key: str, x_figma_token: Optional[str] = Header(None), _=Depends(require_api_key)):
     if not x_figma_token:
         raise HTTPException(status_code=400, detail="Missing X-Figma-Token header request parameter")
-    
-    max_retries = 4 
+   
+    max_retries = 4
     retry_delay = 10.0
-    
+   
     async with httpx.AsyncClient() as client:
         for attempt in range(max_retries):
             try:
@@ -1525,25 +1564,25 @@ async def proxy_figma_file(file_key: str, x_figma_token: Optional[str] = Header(
                     headers={"X-Figma-Token": x_figma_token},
                     timeout=30.0
                 )
-                
+               
                 if response.status_code == 429:
                     if attempt < max_retries - 1:
                         print(f"Figma API rate limit hit. Retrying in {retry_delay} seconds...")
                         await asyncio.sleep(retry_delay)
                         retry_delay *= 2
                         continue
-                
+               
                 if response.status_code != 200:
                     raise HTTPException(status_code=response.status_code, detail=response.text)
                 return response.json()
-                
+               
             except httpx.RequestError as e:
                 if attempt < max_retries - 1:
                     await asyncio.sleep(retry_delay)
                     retry_delay *= 2
                     continue
                 raise HTTPException(status_code=500, detail=f"Figma API Proxy call failed: {str(e)}")
-        
+       
     raise HTTPException(status_code=429, detail="Figma API Rate Limit exceeded. Please wait a moment before trying again.")
 
 @app.post("/figma-assets/extract")
@@ -1552,10 +1591,10 @@ async def extract_figma_assets(payload: AssetExtractionPayload, _=Depends(requir
         fig_json = payload.figmaJson
         refs = set()
         find_image_refs_recursive(fig_json, refs)
-        
+       
         if not refs:
             return {"status": "Success", "figmaJson": fig_json, "assets": [], "imageRefCount": 0}
-            
+           
         async with httpx.AsyncClient() as client:
             img_res = await client.get(
                 f"https://api.figma.com/v1/files/{payload.fileKey}/images",
@@ -1564,12 +1603,12 @@ async def extract_figma_assets(payload: AssetExtractionPayload, _=Depends(requir
             )
             if img_res.status_code != 200:
                 raise HTTPException(status_code=img_res.status_code, detail="Unable to retrieve asset URLs from Figma")
-                
+               
             image_urls = img_res.json().get("meta", {}).get("images", {})
-            
+           
             ref_mapping = {}
             downloaded_assets = []
-            
+           
             for ref in refs:
                 if ref in image_urls:
                     url = image_urls[ref]
@@ -1577,20 +1616,19 @@ async def extract_figma_assets(payload: AssetExtractionPayload, _=Depends(requir
                         img_data = (await client.get(url, timeout=15.0)).content
                         local_filename = f"figma_{ref[:12]}.png"
                         local_path = ASSETS_DIR / local_filename
-                        
+                       
                         with open(local_path, "wb") as f:
                             f.write(img_data)
-                            
-                        # Absolute URL: the frontend runs on a different origin
+                           
                         public_web_path = f"{PUBLIC_BASE_URL}/assets/{local_filename}"
                         ref_mapping[ref] = public_web_path
                         downloaded_assets.append({"imageRef": ref, "path": public_web_path})
                     except Exception as e:
                         print(f"Warning: Failed to fetch image ref {ref}: {e}")
                         continue
-                    
+                   
         replace_image_paths_recursive(fig_json, ref_mapping)
-        
+       
         return {
             "status": "Success",
             "figmaJson": fig_json,
@@ -1614,7 +1652,6 @@ def _strip_code_fences(text: str) -> str:
 
 @app.post("/api/figma/generate")
 def figma_generate(payload: FigmaGeneratePayload, _=Depends(require_api_key)):
-    """Server-side Gemini refinement for Figma pages."""
     if not GEMINI_AVAILABLE:
         raise HTTPException(status_code=503, detail="google-generativeai is not installed on the server")
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_API_KEY_HERE":
