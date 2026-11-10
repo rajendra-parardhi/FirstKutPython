@@ -831,8 +831,8 @@ function App() {
               <button
                 type="button"
                 onClick={() => {
-                  setWorkspace("jira");
                   setIsConnectorsOpen(false);
+                  window.open("/typ.html", "_blank"); 
                 }}
                 style={{
                   display: "flex",

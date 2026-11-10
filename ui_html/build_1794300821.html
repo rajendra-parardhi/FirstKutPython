@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #eff4fd;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card-container {
+      background-color: #fbfcfc;
+      width: 100%;
+      max-width: 380px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+    }
+
+    .card-header {
+      padding: 24px 28px 16px 28px;
+      border-bottom: 1px solid #e5e9f0;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .card-header h1 {
+      font-size: 25px;
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1.2;
+    }
+
+    .card-header a {
+      font-size: 11px;
+      color: #1068ff;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .card-header a:hover {
+      text-decoration: underline;
+    }
+
+    .card-body {
+      padding: 24px 28px 28px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .input-field {
+      width: 100%;
+      height: 38px;
+      padding: 8px 12px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-email {
+      background-color: #fafbfb;
+    }
+
+    .input-password {
+      background-color: #f9fafa;
+      font-size: 13px;
+    }
+
+    .input-field:focus {
+      border-color: #1068ff;
+      box-shadow: 0 0 0 3px rgba(16, 104, 255, 0.15);
+    }
+
+    .input-field::placeholder {
+      color: #94a3b8;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 2px;
+      margin-bottom: 4px;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #1068ff;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .checkbox-row label {
+      font-size: 13px;
+      color: #475569;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .btn {
+      width: 100%;
+      height: 38px;
+      border-radius: 6px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.2s, opacity 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #1068ff;
+      color: #ffffff;
+      font-size: 17px;
+    }
+
+    .btn-primary:hover {
+      background-color: #0056e0;
+    }
+
+    .btn-secondary {
+      background-color: #f4f4f4;
+      color: #334155;
+      font-size: 14px;
+      border: 1px solid #e2e8f0;
+      font-weight: 500;
+    }
+
+    .btn-secondary:hover {
+      background-color: #e9e9e9;
+    }
+
+    .google-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .forgot-link {
+      text-align: center;
+      font-size: 13px;
+      color: #64748b;
+      text-decoration: underline;
+      margin-top: 4px;
+      cursor: pointer;
+    }
+
+    .forgot-link:hover {
+      color: #1068ff;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="card-container">
+    <header class="card-header">
+      <h1>Sign in</h1>
+      <a href="#">or create an account</a>
+    </header>
+
+    <form class="card-body" onsubmit="event.preventDefault();">
+      <div class="form-group">
+        <input 
+          type="email" 
+          class="input-field input-email" 
+          placeholder="Email" 
+          required 
+          aria-label="Email"
+        />
+      </div>
+
+      <div class="form-group">
+        <input 
+          type="password" 
+          class="input-field input-password" 
+          placeholder="Password" 
+          required 
+          aria-label="Password"
+        />
+      </div>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="remember-me" />
+        <label for="remember-me">Remember me</label>
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        Sign in
+      </button>
+
+      <button type="button" class="btn btn-secondary">
+        <svg class="google-icon" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.3 7.31 24 12 24z"/>
+          <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.42l4.02-3.15z"/>
+          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+        </svg>
+        Sign in with Google
+      </button>
+
+      <a href="#" class="forgot-link">Forgotten your password</a>
+    </form>
+  </main>
+
+</body>
+</html>

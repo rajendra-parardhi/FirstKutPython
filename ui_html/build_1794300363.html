@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Capturing Moments</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f8f7fa;
+      color: #2c233a;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Header Component (id: 1 & 3) */
+    header {
+      background-color: #5d5871;
+      color: #ffffff;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .brand-logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ffffff;
+      text-decoration: none;
+      letter-spacing: 0.5px;
+    }
+
+    .back-link {
+      color: #d1cbdc;
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color 0.2s ease;
+    }
+
+    .back-link:hover {
+      color: #ffffff;
+    }
+
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+
+    .btn-header-cta {
+      background-color: #6c54ab;
+      color: #ffffff;
+      border: none;
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+
+    .btn-header-cta:hover {
+      background-color: #584293;
+    }
+
+    .btn-header-cta:active {
+      transform: scale(0.98);
+    }
+
+    .header-subtext {
+      font-size: 0.75rem;
+      color: #c4bece;
+      margin-top: 0.25rem;
+    }
+
+    .header-subtext a {
+      color: #ffffff;
+      text-decoration: underline;
+    }
+
+    /* Main Content Section */
+    main {
+      flex: 1;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    /* Hero Text Block (id: 4) */
+    .hero-content {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .hero-title {
+      font-size: 2.5rem;
+      line-height: 1.2;
+      color: #2c233a;
+      font-weight: 800;
+      margin-bottom: 1rem;
+    }
+
+    .hero-subtitle {
+      font-size: 1.1rem;
+      color: #53478e;
+      font-weight: 500;
+    }
+
+    /* Hero Action Panel (id: 2) */
+    .auth-card {
+      background-color: #ffffff;
+      border: 1px solid #e1deea;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 20px rgba(44, 35, 58, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .auth-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #2c233a;
+      margin-bottom: 0.5rem;
+    }
+
+    .btn-primary-action {
+      background-color: #6c54ab;
+      color: #ffffff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: background-color 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .btn-primary-action:hover {
+      background-color: #584293;
+      box-shadow: 0 4px 12px rgba(108, 84, 171, 0.3);
+    }
+
+    .social-divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      color: #8c859d;
+      font-size: 0.8rem;
+      margin: 0.5rem 0;
+    }
+
+    .social-divider::before,
+    .social-divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid #e1deea;
+    }
+
+    .social-divider::before {
+      margin-right: .5em;
+    }
+
+    .social-divider::after {
+      margin-left: .5em;
+    }
+
+    .social-buttons {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .btn-social {
+      flex: 1;
+      background-color: #f2eff8;
+      color: #2c233a;
+      border: 1px solid #dcd7ea;
+      padding: 0.6rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: background-color 0.2s ease;
+    }
+
+    .btn-social:hover {
+      background-color: #e5dff2;
+    }
+
+    /* Footer Component (id: 0) */
+    footer {
+      background-color: #68637a;
+      color: #e1deea;
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.85rem;
+      margin-top: auto;
+    }
+
+    @media (max-width: 768px) {
+      main {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .hero-content {
+        align-items: center;
+      }
+      .header-right {
+        align-items: flex-end;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header>
+    <div class="header-left">
+      <a href="#" class="brand-logo">AMU</a>
+      <a href="#" class="back-link">&larr; Back to website</a>
+    </div>
+    <div class="header-right">
+      <button class="btn-header-cta">Create an account</button>
+      <span class="header-subtext">Already have an account? <a href="#">Log in</a></span>
+    </div>
+  </header>
+
+  <!-- Main Body Content -->
+  <main>
+    <section class="hero-content">
+      <h1 class="hero-title">Capturing Moments</h1>
+      <p class="hero-subtitle">Creating Memories</p>
+    </section>
+
+    <section class="auth-card">
+      <h2 class="auth-title">Get Started</h2>
+      <button class="btn-primary-action">Create account</button>
+      
+      <div class="social-divider">or sign in with</div>
+
+      <div class="social-buttons">
+        <button class="btn-social">
+          <span>Google</span>
+        </button>
+        <button class="btn-social">
+          <span>Apple</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer Container -->
+  <footer>
+    <p>&copy; AMU Application. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

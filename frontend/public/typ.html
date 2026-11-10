@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>StoryForge — UI Prototype (mocked, no APIs)</title>
+<!--
+  ============================================================================
+  StoryForge PROTOTYPE — reference build for the implementation team.
+  Open this file in any browser (double-click). No server, no APIs, no internet.
+
+  Comment markers in the script map 1:1 to STORYFORGE-IMPLEMENTATION-PLAN.md:
+    [FEATURE 1] Foundation & Jira Connection  -> shell, Connections, Finder, Query Builder
+    [FEATURE 2] Backlog Health Score          -> scorecard modal + rubric popover
+    [FEATURE 3] Polish                        -> 4-step wizard + Diff View + Approve & Sync
+    [FEATURE 4] Create & Decompose            -> Create Epic / Split / Break down wizards
+    [FEATURE 5] Batch Polish                  -> multi-select batch run with partial failure
+    [FEATURE 6] Design Import (Figma)         -> 5-step in-page flow
+  Everything labelled MOCK_* stands in for a real API / LLM call.
+  ============================================================================
+-->
+<style>
+  :root{
+    --rail:#141833; --rail-ink:#9AA1C9; --ink:#1B1F3B; --muted:#6B7194;
+    --bg:#F4F5FB; --card:#FFFFFF; --line:#E5E7F2;
+    --accent:#6459E8; --accent-soft:#EEEDFD;
+    --good:#12A150; --good-soft:#E9F8EF;
+    --warn:#DE8A00; --warn-soft:#FFF4E2;
+    --bad:#E5484D;  --bad-soft:#FDEEED;
+    --info:#2E7BE4; --info-soft:#E9F2FE;
+    --shadow:0 10px 30px rgba(20,24,51,.12);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font:14px/1.5 Inter,"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  button{font:inherit;cursor:pointer}
+  a{color:var(--accent)}
+  .muted{color:var(--muted)}
+  .mono{font-family:ui-monospace,Consolas,monospace;font-size:12.5px}
+
+  /* ---------- prototype banner ---------- */
+  #banner{background:#2A1E05;color:#FFD98A;font-size:12px;padding:5px 16px;display:flex;gap:14px;align-items:center;border-bottom:1px solid #4A370B}
+  #banner b{color:#FFE9BD}
+  #banner .dot{width:7px;height:7px;border-radius:50%;background:#FFB020;display:inline-block;margin-right:6px}
+
+  /* ---------- top bar ---------- */
+  #topbar{height:52px;background:var(--rail);color:#fff;display:flex;align-items:center;gap:16px;padding:0 16px;position:sticky;top:0;z-index:40}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.2px}
+  .logo .mark{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#7B6CFF,#4ED7C8);transform:rotate(45deg);border-radius:6px}
+  .logo small{font-weight:400;color:#8E96C9;font-size:11px;border:1px solid #343A66;border-radius:20px;padding:1px 8px;margin-left:4px}
+  #topbar .spacer{flex:1}
+  .chip{display:inline-flex;align-items:center;gap:7px;border-radius:20px;padding:4px 11px;font-size:12.5px;line-height:1.4}
+  .chip.dark{background:#232851;color:#CDD3F5;border:1px solid #343A66}
+  .chip.dark .ok{color:#3ED598}
+  .avatar{width:28px;height:28px;border-radius:50%;background:#7B6CFF;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700}
+
+  /* ---------- shell / rail ---------- */
+  .shell{display:flex;min-height:calc(100vh - 84px)}
+  #rail{width:216px;background:var(--rail);padding:14px 10px;flex:0 0 216px}
+  #rail .grp{font-size:10.5px;letter-spacing:1.2px;color:#5D648F;text-transform:uppercase;margin:14px 10px 6px}
+  .rail-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--rail-ink);cursor:pointer;user-select:none;margin-bottom:2px}
+  .rail-item:hover{background:#1C2145;color:#DFE3FF}
+  .rail-item.on{background:var(--accent);color:#fff}
+  .rail-item .ico{width:17px;text-align:center;opacity:.9}
+  .rail-item .badge{margin-left:auto;background:#2A2F5C;color:#AEB6E6;font-size:11px;border-radius:10px;padding:0 7px}
+  .rail-item.on .badge{background:rgba(255,255,255,.25);color:#fff}
+  #main{flex:1;padding:18px 22px 40px;min-width:0}
+
+  /* ---------- page head ---------- */
+  .page-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
+  .page-head h1{font-size:19px;margin:0 0 3px}
+  .page-head p{margin:0;color:var(--muted);font-size:13px}
+  .page-head .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+
+  /* ---------- buttons ---------- */
+  .btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:7px 14px;font-weight:600;font-size:13px;display:inline-flex;gap:7px;align-items:center}
+  .btn:hover{border-color:#C9CDE2;background:#FAFAFF}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:#5549E0}
+  .btn.primary:disabled,.btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.ghost{background:transparent}
+  .btn.danger{color:var(--bad);border-color:#F3C9C9}
+  .btn.sm{padding:5px 10px;font-size:12.5px}
+  .btn.wide{width:100%;justify-content:center}
+  .icon-btn{border:1px solid transparent;background:transparent;border-radius:7px;width:28px;height:28px;line-height:1;color:var(--muted)}
+  .icon-btn:hover{background:#EEF0F9;color:var(--ink)}
+
+  /* ---------- cards / table ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(20,24,51,.04)}
+  .card .pad{padding:14px 16px}
+  .toolbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .toolbar .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+  table.grid{width:100%;border-collapse:collapse}
+  table.grid th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);padding:9px 12px;border-bottom:1px solid var(--line);background:#FBFBFE;white-space:nowrap}
+  table.grid td{padding:10px 12px;border-bottom:1px solid #EFEFF7;vertical-align:middle}
+  table.grid tr:hover td{background:#FAFAFF}
+  table.grid tr.sel td{background:var(--accent-soft)}
+  .sum{max-width:430px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .key{font-weight:600;text-decoration:none}
+  .key:hover{text-decoration:underline}
+  .row-act{position:relative;text-align:right}
+
+  /* ---------- chips ---------- */
+  .st{display:inline-block;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+  .st-Backlog{background:#ECEEF5;color:#5B6180}
+  .st-Discovery{background:#F1EDFD;color:#6C4FD6}
+  .st-"In Progress"{background:var(--info-soft);color:var(--info)}
+  .st-InProgress{background:var(--info-soft);color:var(--info)}
+  .st-Ready{background:#E4F7F4;color:#0F8F7E}
+  .st-Accepted{background:var(--good-soft);color:var(--good)}
+  .score{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fff;border-radius:20px;padding:2px 10px 2px 4px;font-weight:700;font-size:12.5px;cursor:pointer}
+  .score .ring{width:20px;height:20px}
+  .score.lo{border-color:#F3C9C9;background:var(--bad-soft);color:#B3373B}
+  .score.md{border-color:#F5DFB4;background:var(--warn-soft);color:#9A6200}
+  .score.hi{border-color:#BFE8D0;background:var(--good-soft);color:#0C7A3E}
+  .score small{font-weight:600;opacity:.7}
+  .mk{display:inline-block;font-size:11.5px;border-radius:5px;padding:1px 7px;background:var(--accent-soft);color:#5145C7;border:1px solid #DAD6FB;font-family:ui-monospace,Consolas,monospace}
+  .delta{font-size:11.5px;color:var(--muted);margin-left:6px}
+
+  /* ---------- dropdown menu ---------- */
+  .menu{position:absolute;right:6px;top:30px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:190px;padding:5px;display:none;z-index:30;text-align:left}
+  .menu.show{display:block}
+  .menu button{display:flex;gap:9px;width:100%;border:0;background:none;padding:8px 10px;border-radius:7px;font-size:13px;text-align:left;color:var(--ink)}
+  .menu button:hover{background:#F3F2FD}
+  .menu .sep{height:1px;background:var(--line);margin:4px 2px}
+  .menu .head{font-size:11px;color:var(--muted);padding:5px 10px 2px;letter-spacing:.5px;text-transform:uppercase}
+
+  /* ---------- applied JQL chip ---------- */
+  .jql{display:flex;gap:8px;align-items:center;margin:0 0 12px}
+  .jql .q{background:#221F3D;color:#C9C4FF;border-radius:7px;padding:5px 10px;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+  .jql .x{border:0;background:none;color:#8E86FF;cursor:pointer;font-weight:700}
+
+  /* ---------- modal / wizard ---------- */
+  #modal-root{position:fixed;inset:0;background:rgba(16,18,40,.55);display:none;z-index:60;padding:34px 16px;overflow:auto}
+  #modal-root.show{display:block}
+  .sheet{background:#fff;border-radius:14px;box-shadow:var(--shadow);max-width:1060px;margin:0 auto;overflow:hidden}
+  .sheet.narrow{max-width:640px}
+  .sheet-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .sheet-head h2{font-size:16px;margin:0}
+  .sheet-head .k{color:var(--muted);font-weight:600}
+  .sheet-head .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .wiz{display:flex;min-height:430px}
+  .stepper{width:222px;border-right:1px solid var(--line);background:#FBFBFE;padding:18px 14px;flex:0 0 222px}
+  .stepper li{list-style:none;display:flex;gap:11px;align-items:flex-start;padding:9px 6px;color:var(--muted);font-weight:600;font-size:13px;border-radius:8px}
+  .stepper li .dot{width:22px;height:22px;border-radius:50%;background:#E9EBF6;color:#7A80A6;display:grid;place-items:center;font-size:11.5px;flex:0 0 22px}
+  .stepper li.on{color:var(--ink);background:var(--accent-soft)}
+  .stepper li.on .dot{background:var(--accent);color:#fff}
+  .stepper li.done{color:var(--good)}
+  .stepper li.done .dot{background:var(--good-soft);color:var(--good)}
+  .wiz-body{flex:1;padding:20px 22px;min-width:0;max-height:66vh;overflow:auto}
+  .wiz-foot{display:flex;gap:9px;justify-content:flex-end;padding:13px 18px;border-top:1px solid var(--line);background:#FBFBFE}
+  .wiz h3{margin:0 0 4px;font-size:15px}
+  .wiz .hint{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+
+  /* ---------- forms ---------- */
+  label.f{display:block;font-size:12.5px;font-weight:700;color:#4A4F73;margin:14px 0 5px}
+  input[type=text],input[type=password],select,textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:inherit;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+  textarea{min-height:96px;resize:vertical}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .checks{display:flex;flex-wrap:wrap;gap:9px}
+  .checks label{display:flex;gap:7px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:7px 12px;background:#fff;cursor:pointer;font-weight:600;font-size:13px}
+  .checks label:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:#4A40C7}
+  .radio-line{display:flex;gap:18px;flex-wrap:wrap;align-items:center;font-size:13.5px}
+  .drop{border:1.5px dashed #CFD3EA;border-radius:10px;padding:16px;text-align:center;color:var(--muted);background:#FBFBFF;font-size:13px}
+  .drop b{color:var(--accent)}
+  .filepill{display:inline-flex;gap:7px;align-items:center;background:var(--accent-soft);border:1px solid #DDD9FC;border-radius:7px;padding:3px 9px;font-size:12.5px;margin:6px 6px 0 0}
+  .counter{font-size:11.5px;color:var(--muted);text-align:right;margin-top:3px}
+  .err{color:var(--bad);font-size:12.5px;margin-top:6px}
+
+  /* ---------- spinner / states ---------- */
+  .spin{width:34px;height:34px;border:3px solid #E6E4FB;border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 12px}
+  .spin.sm{width:16px;height:16px;border-width:2px;margin:0}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .center-state{text-align:center;padding:44px 10px;color:var(--muted)}
+  .center-state b{display:block;color:var(--ink);font-size:15px;margin-bottom:3px}
+  .toast-err{background:var(--bad-soft);border:1px solid #F3C9C9;color:#9E2F33;border-radius:9px;padding:10px 13px;font-size:13px;display:flex;gap:9px;align-items:center}
+
+  /* ---------- scorecard ---------- */
+  .score-top{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .gauge{position:relative;width:96px;height:96px;flex:0 0 96px}
+  .gauge svg{transform:rotate(-90deg)}
+  .gauge .val{position:absolute;inset:0;display:grid;place-items:center;font-size:30px;font-weight:800}
+  .metric{text-align:center;padding:4px 14px;border-left:1px solid var(--line)}
+  .metric b{display:block;font-size:21px}
+  .metric span{font-size:12px;color:var(--muted)}
+  .pill{border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;border:1px solid}
+  .pill.bad{color:#B3373B;background:var(--bad-soft);border-color:#F3C9C9}
+  .pill.warn{color:#9A6200;background:var(--warn-soft);border-color:#F5DFB4}
+  .pill.good{color:#0C7A3E;background:var(--good-soft);border-color:#BFE8D0}
+  .fb{border-left:3px solid var(--line);background:#FBFBFE;border-radius:0 8px 8px 0;padding:10px 13px;margin-top:10px}
+  .fb b{font-size:13px}
+  .fb .pt{float:right;font-weight:800;font-size:13px}
+  .fb p{margin:5px 0 0;font-size:13px;color:#4A4F73}
+  .fb.ok{border-color:var(--good)} .fb.mid{border-color:var(--warn)} .fb.no{border-color:var(--bad)}
+  .rubric{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:12px;background:#fff;font-size:13px}
+  .rubric table{width:100%;border-collapse:collapse;margin-top:8px}
+  .rubric td,.rubric th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;font-size:12.5px}
+  .formula{font-family:ui-monospace,Consolas,monospace;background:#221F3D;color:#B9B3FF;border-radius:7px;padding:8px 11px;font-size:12.5px;margin-top:9px}
+
+  /* ---------- diff view ---------- */
+  .diff-head{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:0;background:#fff;padding:6px 13px;font-size:12.5px;font-weight:700;color:var(--muted)}
+  .seg button.on{background:var(--accent);color:#fff}
+  .diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .diff-col h4{margin:0 0 7px;font-size:13px;display:flex;gap:8px;align-items:center}
+  .diff-col .body{border-radius:10px;padding:12px 14px;font-size:13px;white-space:pre-wrap;border:1px solid}
+  .diff-col.cur .body{background:#FFF3F3;border-color:#F5D4D4;color:#7A3134}
+  .diff-col.inc .body{background:#F0FBF4;border-color:#CDEBDA;color:#1C5E39}
+  .diff-col h4 .tag{font-size:11px;border-radius:5px;padding:1px 7px;font-weight:700}
+  .diff-col.cur .tag{background:#FBE3E3;color:#A63A3D}
+  .diff-col.inc .tag{background:#DCF3E6;color:#137A47}
+  .diff-sec{margin-bottom:16px}
+  .chip-delta{font-size:11.5px;font-weight:800;border-radius:6px;padding:1px 7px;background:#DCF3E6;color:#137A47;margin-left:auto}
+
+  /* ---------- generated item list ---------- */
+  .gen{border:1px solid #CFE9DB;background:#F6FCF8;border-radius:10px;padding:11px 13px;margin-bottom:9px;display:flex;gap:11px;align-items:flex-start}
+  .gen .tg{border:1px solid #BFE8D0;background:#fff;color:#0C7A3E;border-radius:20px;font-size:11.5px;font-weight:700;padding:1px 9px;flex:0 0 auto;margin-top:1px}
+  .gen .ttl{font-weight:650;font-size:13.5px;flex:1;min-width:0}
+  .gen .ttl .sub{display:block;font-weight:400;color:var(--muted);font-size:12.5px;margin-top:4px;white-space:pre-wrap}
+  .gen .tools{display:flex;gap:4px}
+  .gen.collapsed{cursor:pointer}
+  .gen input[type=checkbox]{margin-top:3px}
+
+  /* ---------- batch ---------- */
+  .batch-row{display:flex;gap:11px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:9px 12px;margin-bottom:8px}
+  .batch-row .stt{margin-left:auto;font-size:12.5px;font-weight:700}
+  .batch-row .stt.q{color:var(--muted)} .batch-row .stt.r{color:var(--info)} .batch-row .stt.d{color:var(--good)} .batch-row .stt.f{color:var(--bad)}
+  .bar{height:8px;border-radius:6px;background:#ECEEF8;overflow:hidden;margin:12px 0 4px}
+  .bar i{display:block;height:100%;background:var(--accent);transition:width .35s}
+
+  /* ---------- design import ---------- */
+  .fstep{display:flex;gap:0;margin-bottom:18px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 8px}
+  .fstep .s{flex:1;text-align:center;position:relative;font-size:12.5px;font-weight:700;color:var(--muted)}
+  .fstep .s .n{width:26px;height:26px;border-radius:50%;background:#ECEEF8;color:#7A80A6;display:grid;place-items:center;margin:0 auto 5px;font-size:12px}
+  .fstep .s.on{color:var(--ink)} .fstep .s.on .n{background:var(--accent);color:#fff}
+  .fstep .s.done{color:var(--good)} .fstep .s.done .n{background:var(--good-soft);color:var(--good)}
+  .fstep .s:not(:last-child):after{content:"";position:absolute;top:13px;right:-6px;width:12px;height:2px;background:#E4E6F2}
+  .screens{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+  .screen{border:2px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;cursor:pointer;position:relative}
+  .screen.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .screen .thumb{background:#EDEFF8;display:block;width:100%;height:132px}
+  .screen .cap{padding:8px 11px;font-size:12.5px;font-weight:650;display:flex;align-items:center;gap:7px}
+  .screen .tick{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid var(--line);display:grid;place-items:center;font-size:12px;color:transparent}
+  .screen.on .tick{background:var(--accent);border-color:var(--accent);color:#fff}
+  .spec{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff}
+  .spec h4{margin:0 0 4px;font-size:13.5px}
+  .spec .kv{font-size:12.8px;color:#4A4F73;margin-top:7px}
+  .spec .kv b{color:var(--ink)}
+  .story-card{border:1px solid var(--line);border-radius:11px;background:#fff;margin-bottom:11px;overflow:hidden}
+  .story-card .sh{display:flex;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);background:#FBFBFE}
+  .story-card .sb{padding:12px 14px;font-size:13px}
+  .story-card pre{background:#221F3D;color:#C7F2DD;border-radius:8px;padding:11px 13px;font-size:12.3px;line-height:1.55;overflow:auto;margin:8px 0 0;font-family:ui-monospace,Consolas,monospace}
+  .thumbsm{width:74px;height:46px;border-radius:6px;background:#EDEFF8;flex:0 0 74px;overflow:hidden}
+  .thumbsm svg{display:block}
+
+  /* ---------- toasts ---------- */
+  #toasts{position:fixed;right:18px;bottom:18px;z-index:90;display:flex;flex-direction:column;gap:9px;max-width:400px}
+  .toast{background:#1C2145;color:#EAEbff;border-radius:10px;padding:11px 15px;font-size:13px;box-shadow:var(--shadow);display:flex;gap:10px;align-items:flex-start;animation:tin .25s ease}
+  .toast.ok{background:#0E3B25;color:#C9F5DF;border:1px solid #1C6B45}
+  .toast.err{background:#4A1B1D;color:#FFD9DA;border:1px solid #7A3134}
+  .toast b{display:block}
+  @keyframes tin{from{transform:translateY(8px);opacity:0}}
+  .link-btn{border:0;background:none;color:var(--accent);font-weight:700;padding:0;cursor:pointer;font-size:inherit}
+  .inline-note{font-size:12.5px;color:var(--muted);margin-top:9px}
+  .kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;font-size:11.5px;background:#FAFAFF}
+  @media (max-width:900px){.wiz{flex-direction:column}.stepper{width:auto;flex:none;display:flex;gap:6px;overflow:auto}.diff-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<!-- <div id="banner"><span><span class="dot"></span><b>PROTOTYPE</b> — dummy design &amp; dummy workflow, <b>no APIs</b>. Every “AI” and “Jira” action is simulated in-browser.</span><span>Reference for <b>STORYFORGE-IMPLEMENTATION-PLAN.md</b> · Features 1–6</span></div> -->
+
+<header id="topbar">
+  <div class="logo"><span class="mark"></span>StoryForge <small>AI Backlog Studio</small></div>
+  <span class="chip dark">Project: <b>PAYOPS</b> · Payments Operations</span>
+  <span class="spacer"></span>
+  <button class="chip dark" onclick="openConnections()"><span class="ok">●</span> Connections</button>
+  <button class="chip dark" onclick="openTemplates()">Templates</button>
+  <div class="avatar">AK</div>
+</header>
+
+<div class="shell">
+  <nav id="rail"></nav>
+  <main id="main"></main>
+</div>
+
+<div id="modal-root" onclick="if(event.target===this)closeModal()"></div>
+<div id="toasts"></div>
+
+<script>
+/* ==========================================================================
+   StoryForge PROTOTYPE engine — see header comment for feature mapping.
+   ========================================================================== */
+"use strict";
+
+/* ---------- tiny helpers ---------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const $  = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+function toast(title, sub, kind){
+  const t = document.createElement("div");
+  t.className = "toast " + (kind || "");
+  t.innerHTML = "<span>" + (kind === "ok" ? "✅" : kind === "err" ? "⛔" : "ℹ️") + "</span><span><b>" + esc(title) + "</b>" + (sub ? esc(sub) : "") + "</span>";
+  $("#toasts").appendChild(t);
+  setTimeout(() => t.remove(), 4600);
+}
+function statusClass(s){ return s === "In Progress" ? "st-InProgress" : s === "Ready for Dev" ? "st-Ready" : "st-" + s; }
+
+/* ==========================================================================
+   [FEATURE 1] MOCK DATA — stands in for Jira Cloud (GET /rest/api/3/search)
+   ========================================================================== */
+function epic104fields(){
+  return {
+    summary: "Merchant Refund Overhaul,Chargeback Rules,Wallet Sync (Off mode)",
+    description:
+"[*]Merchant Refund Overhaul[*]\n\nThe refunds service handles captures and refunds on a single synchronous path. " +
+"This epic splits refunds into an orchestrated workflow so ops can track every state.\n\n" +
+"[*]Chargeback Rules[*]\n\nRule evaluation runs nightly in a batch job, so decisions are stale by the time " +
+"analysts review them.\n\n[*]Wallet Sync (Dormant mode)[*]\n\nWallet events are replayed from the nightly " +
+"file; the real-time listener is switched off pending UAT sign-off.",
+    successCriteria:
+"All refund paths must be migrated with no revenue impact.\n\nThe goal is to fortify the refunds platform by " +
+"minimising break risk and fixing all Sev 1 defects before release.",
+    value: "Not Found"
+  };
+}
+function feature210fields(){
+  return {
+    summary: "Change Event: Refund Approval Workflow Phase 1",
+    description:
+"The July release delivers refund submission, threshold routing, approver queues and dashboards for " +
+"Payments Operations. These capabilities replace manual spreadsheets for managing refunds above the " +
+"approval threshold.\n\nDETAILS:\n- Refund submission form and validation\n- Threshold-based routing rules\n" +
+"- Approver queue and reassignment\n- Operational reports (aging, approvals, exceptions)\n\n" +
+"Success Criteria:\nAll the Pre-production activities are done. Readiness plan well executed. Got consensus " +
+"on the Go Live.",
+    successCriteria:
+"All the Pre-production activities are done. Readiness plan well executed. Got consensus on the Go Live. " +
+"Post-Production activities are planned.",
+    value: "Eliminate manual refund spreadsheets, reduce operational risk, and improve efficiency."
+  };
+}
+const DB = {
+  epics: [
+    { key:"PAYOPS-104", type:"Epic", status:"Discovery", assignee:"Patel, Dipesh", updated:"2026-10-28 16:58", score:2, before:null, marker:"",
+      summary:"Merchant Refund Overhaul,Chargeback Rules,Wallet Sync (Off mode)", fields:epic104fields() },
+    { key:"PAYOPS-101", type:"Epic", status:"In Progress", assignee:"Kaur, Simran", updated:"2026-10-21 09:46", score:3, before:null, marker:"",
+      summary:"Real-Time Ledger Streaming Enablement", fields:null },
+    { key:"PAYOPS-98",  type:"Epic", status:"Accepted",  assignee:"Unassigned", updated:"2026-10-14 22:47", score:5, before:null, marker:"ai-polished",
+      summary:"Dispute Evidence Portal Rollout", fields:null },
+    { key:"PAYOPS-95",  type:"Epic", status:"Discovery", assignee:"Ahmed, Rasheed", updated:"2026-10-09 00:35", score:4, before:null, marker:"",
+      summary:"FX Reconciliation Batch Retirement", fields:null }
+  ],
+  features: [
+    { key:"PAYOPS-210", type:"Feature", status:"In Progress", assignee:"Kaur, Simran", updated:"2026-10-27 10:04", score:3, before:null, marker:"",
+      summary:"Refund Approval Workflow — Phase 1 (Deal workspace, routing, dashboards)", fields:feature210fields() },
+    { key:"PAYOPS-207", type:"Feature", status:"Discovery", assignee:"Patel, Dipesh", updated:"2026-10-24 10:44", score:2, before:null, marker:"",
+      summary:"Chargeback Evidence Vault with SLA Timers", fields:null },
+    { key:"PAYOPS-204", type:"Feature", status:"Accepted", assignee:"Ahmed, Rasheed", updated:"2026-10-18 12:04", score:5, before:null, marker:"ai-polished",
+      summary:"Wallet Sync Dormant-Mode Activation and Backlog Replay", fields:null },
+    { key:"PAYOPS-199", type:"Feature", status:"In Progress", assignee:"Kaur, Simran", updated:"2026-10-15 15:20", score:4, before:null, marker:"",
+      summary:"Ledger Event Streaming via Queue", fields:null }
+  ],
+  stories: [
+    { key:"PAYOPS-318", type:"Story", status:"Ready for Dev", assignee:"Chen, Erin", updated:"2026-10-29 11:20", score:3, before:null, marker:"",
+      summary:"As a disputes analyst, I want to submit a chargeback evidence pack, so that responses are filed before the network deadline", fields:null },
+    { key:"PAYOPS-315", type:"Story", status:"In Progress", assignee:"Chen, Erin", updated:"2026-10-26 14:31", score:4, before:null, marker:"",
+      summary:"As a refunds ops analyst, I want to approve refunds above threshold, so that high-value releases get a second review", fields:null },
+    { key:"PAYOPS-311", type:"Story", status:"Accepted", assignee:"Unassigned", updated:"2026-10-22 10:07", score:5, before:null, marker:"ai-draft",
+      summary:"As a finance controller, I want to view wallet sync exceptions, so that I can clear breaks before cutoff", fields:null },
+    { key:"PAYOPS-309", type:"Story", status:"Backlog", assignee:"Patel, Dipesh", updated:"2026-10-19 16:04", score:1, before:null, marker:"",
+      summary:"As a support agent, I want to cancel a pending refund, so that customers are not charged after a service promise", fields:null }
+  ]
+};
+const STATUSES = ["Backlog","Discovery","In Progress","Ready for Dev","Accepted"];
+const ASSIGNEES = ["Unassigned","Patel, Dipesh","Kaur, Simran","Ahmed, Rasheed","Chen, Erin"];
+const state = { module:"epics", sel:new Set(), filters:{status:"",assignee:""}, jql:"", expand:{} };
+
+/* ==========================================================================
+   [FEATURE 3/4/6] MOCK AI — stands in for the LLM gateway.
+   Real impl: POST /refine, POST /decompose, POST /figma/analyze with
+   JSON-schema validation (ScoreResult, RefinementProposal, FeatureDraft[],
+   StoryDraft[], ScreenSpec[]).
+   ========================================================================== */
+const MOCK_AI = {
+
+  /* Polish proposal for an existing issue --------------------------------- */
+  refine(issue){
+    if (issue.key === "PAYOPS-104") return {
+      score: 5,
+      fields: {
+        summary: "Modernise Refund Orchestration, Chargeback Rule Evaluation, and Wallet Sync Activation",
+        description:
+"[*]Context & Strategic Alignment[*]\nRefund, chargeback and wallet-sync capabilities are managed in silos, " +
+"producing inconsistent states and slow exception resolution for Payments Operations.\n\n" +
+"[*]Problem Statement & Opportunity[*]\nSynchronous refund paths and nightly batch rule evaluation delay " +
+"decisions; the dormant wallet listener hides breaks until the end-of-day file arrives.\n\n" +
+"[*]Scope Inclusions[*]\n- Refund orchestration state machine with webhook ingestion\n- Chargeback rules " +
+"engine with near-real-time evaluation\n- Evidence vault with SLA timers\n- Wallet sync dormant-mode " +
+"activation and replay\n\n[*]Out of Scope[*]\n- Card-network contract changes\n- Front-office authorisation " +
+"routing",
+        successCriteria:
+"# *Refund Orchestration:* 100% of refund flows route through the new state machine with zero Sev-1 " +
+"incidents in UAT.\n# *Chargeback Rules:* rule evaluation completes within 5 minutes for 95% of events.\n" +
+"# *Wallet Sync:* dormant-mode replay processes 7 days of backlog with 0 data mismatches.\n" +
+"# *Auditability:* every state transition is logged with actor, timestamp and reason.",
+        value:
+"Reduce refund exception-handling effort, accelerate chargeback decisions and restore wallet visibility for " +
+"Operations — without increasing headcount."
+      }
+    };
+    if (issue.key === "PAYOPS-210") return {
+      score: 5,
+      fields: {
+        summary: "Refund Approval Workflow Phase 1 — Threshold Routing, Approver Queues & Dashboards",
+        description:
+"[*]Context & Strategic Alignment[*]\nRelease delivers automated refund submission, threshold routing and " +
+"approver queues for Payments Operations, replacing manual spreadsheet tracking.\n\n" +
+"[*]Scope Inclusions[*]\n- Refund submission form with validation\n- Configurable threshold routing rules\n" +
+"- Approver queue, reassignment and delegation\n- Analyst & manager dashboards (aging, approvals, exceptions)\n\n" +
+"[*]Constraints[*]\n- Thresholds configurable without deployment\n- Full audit trail retained 7 years\n" +
+"- Must not block the existing straight-through refund path",
+        successCriteria:
+"# *Routing:* refunds above threshold reach an approver queue within 60 seconds for 99% of submissions.\n" +
+"# *Auto-approval:* below-threshold refunds approve instantly with audit entry.\n" +
+"# *Reassignment:* queue reassignment completes in under 5 minutes when the approver is unavailable.\n" +
+"# *Reporting:* aging report reconciles to 100% of open approvals at cut-off.",
+        value:
+"Eliminate manual refund spreadsheets, cut approval cycle time from hours to minutes, and give Operations a " +
+"single auditable approval trail — reducing operational and compliance risk."
+      }
+    };
+    /* generic fallback for any other row */
+    const t = issue.summary.split(",")[0].replace(/^(Change Event:\s*)/i, "");
+    return {
+      score: 5,
+      fields: {
+        summary: "Deliver " + t + " with measurable scope and clear success criteria",
+        description:
+"[*]Context & Strategic Alignment[*]\nThis item supports the Payments Operations modernisation programme.\n\n" +
+"[*]Problem Statement[*]\nCurrent process is manual, fragmented and error-prone for " + issue.type.toLowerCase() +
+" level work.\n\n[*]Scope Inclusions[*]\n- Core capability described in the original summary\n- Operational " +
+"reporting and exception handling\n- Audit logging\n\n[*]Out of Scope[*]\n- Related downstream systems",
+        successCriteria:
+"# Capability delivered and verified in UAT with sign-off from Operations.\n# Zero Sev-1/Sev-2 defects at " +
+"release.\n# Audit trail complete for 100% of state changes.",
+        value: "Reduce manual effort and operational risk for " + issue.type.toLowerCase() + " handling while " +
+              "improving turnaround time."
+      }
+    };
+  },
+
+  /* Create-Epic draft (echoes the requirement text) ------------------------ */
+  createEpic(requirement){
+    const clean = requirement.trim().replace(/\s+/g, " ").replace(/[.\s]+$/, "");
+    const title = clean.length > 96 ? clean.slice(0, 93) + "…" : clean;
+    return {
+      score: 5,
+      title,
+      value: "Deliver the requested capability with a single, trackable outcome and clear operational metrics.",
+      description:
+"[*]Problem Statement[*]\n" + clean + "\n\n[*]Proposed Solution (High Level)*\nThis epic establishes a unified " +
+"workstream covering delivery, operational readiness, reconciliation and reporting for the above requirement.\n\n" +
+"[*]Scope[*]\n- Core capability implementation\n- Data migration and reconciliation\n- Operational procedures " +
+"and training\n\n[*]Out of Scope[*]\n- Unrelated platform upgrades",
+      successCriteria:
+"# Scope agreed and baselined with stakeholders.\n# All in-scope items delivered and verified in UAT.\n" +
+"# Operational readiness checklist complete (runbook, training, support)."
+    };
+  },
+
+  /* Split an Epic into Features ------------------------------------------- */
+  splitEpic(issue){
+    if (issue.key === "PAYOPS-104") return [
+      { title:"Refund Orchestrator — State Machine & Webhook Ingestion",
+        value:"Moves refunds off the synchronous path so every refund has a tracked, resumable state.",
+        successCriteria:"100% of refund types transition through the state machine; webhook retries are idempotent." },
+      { title:"Chargeback Rules Engine — Near-Real-Time Evaluation",
+        value:"Decisions on chargebacks happen in minutes instead of the nightly batch, cutting dispute losses.",
+        successCriteria:"95% of events evaluate in under 5 minutes; rules are versioned and replayable." },
+      { title:"Evidence Vault — Upload, Classification & SLA Timers",
+        value:"Evidence is stored once, classified automatically and tracked against network deadlines.",
+        successCriteria:"Zero missed network deadlines over a 30-day pilot; 25MB file cap enforced." },
+      { title:"Wallet Sync — Dormant-Mode Activation & Backlog Replay",
+        value:"Restores real-time wallet visibility and clears the dormant backlog without data loss.",
+        successCriteria:"7-day backlog replayed with 0 mismatches; listener runs in real time for 5 days." }
+    ];
+    return ["Capability & Scope", "Data & Reconciliation", "Operational Readiness", "Reporting & Audit"].map(p => ({
+      title: p + " — " + issue.summary.split(",")[0].slice(0, 60),
+      value: "Delivers the '" + p + "' portion of " + issue.key + " as an independently releasable increment.",
+      successCriteria: p + " delivered, tested in UAT and signed off by Operations."
+    }));
+  },
+
+  /* Break a Feature down into Stories (Gherkin + points) -------------------- */
+  breakDown(issue){
+    if (issue.key === "PAYOPS-210") return [
+      { title:"Submit refund for threshold approval", points:3,
+        story:"As a refunds operations analyst, I want to submit a refund above the approval threshold for review, so that high-value releases receive a second sign-off.",
+        ac:
+"# *High-value refund routed for approval*\nGiven an analyst submits a refund of 15,000 USD on a captured payment\n" +
+"When the amount exceeds the configured threshold\nThen the refund is routed to the approver queue with status 'Pending Approval'\n\n" +
+"# *Missing fields rejected*\nGiven the analyst leaves the reason code empty\nWhen they submit the refund\n" +
+"Then the system shows 'Reason code is required' and no record is created" },
+      { title:"Auto-approve below-threshold refunds", points:2,
+        story:"As a refunds operations analyst, I want below-threshold refunds approved automatically, so that routine releases are not delayed.",
+        ac:
+"# *Below threshold*\nGiven a refund of 500 USD (threshold is 5,000 USD)\nWhen the analyst submits it\n" +
+"Then it is approved immediately and marked 'Scheduled'\n\n# *Exactly at threshold*\nGiven a refund of 5,000 USD\n" +
+"When submitted\nThen it is routed for approval (threshold is inclusive)" },
+      { title:"Reassign approval when approver unavailable", points:3,
+        story:"As a team lead, I want pending approvals reassigned when the approver is on leave, so that the queue never stalls.",
+        ac:
+"# *Reassign on leave*\nGiven approver 'S. Kaur' is marked on leave\nWhen a refund enters her queue\n" +
+"Then it is reassigned to the backup approver within 5 minutes\n\n# *No backup available*\nGiven no backup approver exists\n" +
+"When reassignment is attempted\nThen an alert is raised to the team lead" },
+      { title:"View refund approval queue", points:2,
+        story:"As an approver, I want to see my pending refunds sorted by age, so that I can work the oldest items first.",
+        ac:
+"# *Queue sorted by age*\nGiven 5 pending refunds of different ages\nWhen the approver opens the queue\n" +
+"Then items are sorted oldest-first\n\n# *Empty queue*\nGiven no pending refunds\nWhen the queue opens\nThen 'Nothing to approve' is shown" },
+      { title:"Audit trail for approval decisions", points:3,
+        story:"As a compliance officer, I want every approval decision recorded with actor and timestamp, so that audits can be evidenced.",
+        ac:
+"# *Decision recorded*\nGiven an approver approves a refund\nWhen the decision is committed\n" +
+"Then actor, timestamp and comment are written to the audit log\n\n# *Immutable*\nGiven an audit entry exists\n" +
+"When any user attempts to edit it\nThen the edit is rejected" },
+      { title:"Notify analyst on approval outcome", points:2,
+        story:"As a refunds operations analyst, I want to be notified when my refund is approved or rejected, so that I can act without polling the queue.",
+        ac:
+"# *Approval notification*\nGiven a refund I submitted is approved\nWhen the status changes\n" +
+"Then I receive an in-app and email notification within 60 seconds\n\n# *Rejection notification*\nGiven a refund is rejected with a comment\n" +
+"When the status changes\nThen the notification includes the rejection reason" }
+    ];
+    return ["View", "Create", "Edit", "Validate", "Report", "Audit"].map((v, i) => ({
+      title: v + " — " + issue.summary.slice(0, 55),
+      points: [2,3,3,2,3,2][i],
+      story: "As a payments operations analyst, I want to " + v.toLowerCase() + " this capability, so that the workflow in '" +
+             issue.summary.slice(0, 60) + "' can be completed end to end.",
+      ac:
+"# *Happy path*\nGiven a signed-in analyst\nWhen they use the '" + v + "' action with valid data\n" +
+"Then success is confirmed and the record is updated\n\n# *Validation*\nGiven a required field is blank\nWhen they submit\n" +
+"Then an inline error is shown and no change is saved"
+    }));
+  },
+
+  /* Screen analysis (vision model) ---------------------------------------- */
+  async analyzeScreens(screens){
+    await sleep(1500);            // simulated vision call
+    return screens.map(s => Object.assign({ id:s.id }, MOCK_SPECS[s.id]));
+  },
+
+  /* Compose stories from screen specs ------------------------------------- */
+  composeStories(specs){
+    const roles = ["platform engineer","refunds analyst","disputes analyst","approver","finance controller","operations manager"];
+    return specs.map((sp, i) => ({
+      screenId: sp.id,
+      title: sp.title,
+      points: [3,2,3,2,3,3][i % 6],
+      story: "As a " + (sp.role || roles[i % roles.length]) + ", I want to " + sp.verb +
+             ", so that " + sp.benefit + ".",
+      ac:
+"# *" + sp.scenario + "*\nGiven a signed-in user on '" + sp.title + "'\nWhen " + sp.when +
+"\nThen " + sp.then + "\n\n# *Validation*\nGiven a required input is empty or invalid\nWhen the user submits\n" +
+"Then an inline error is shown and nothing is saved\n\n# *Empty / edge state*\nGiven there is no data to display\n" +
+"When the screen loads\nThen the empty state '" + sp.empty + "' is shown"
+    }));
+  }
+};
+
+/* Screen specs for the 6 dummy Figma frames ------------------------------- */
+const MOCK_SPECS = {
+  "scr-login": { title:"Login & MFA challenge", role:"platform engineer", verb:"sign in with MFA and remember my device",
+    benefit:"access is protected without repeated OTP prompts", scenario:"Successful MFA sign-in",
+    when:"the OTP matches the issued code", then:"the user lands on the refunds queue within 2 seconds",
+    empty:"No session — redirect to login",
+    elements:["email field","password field","6-digit OTP input","remember-device toggle","sign-in button"],
+    validations:["email format required","OTP must be 6 digits","3 failed attempts locks the account"],
+    states:["loading","invalid credentials","account locked"] },
+  "scr-queue": { title:"Refund queue — list view", role:"refunds analyst", verb:"filter and open pending refunds from a single queue",
+    benefit:"I can triage the backlog quickly", scenario:"Filtered queue results",
+    when:"the analyst applies status 'Pending Approval'", then:"only matching refunds are listed, oldest first",
+    empty:"No refunds match these filters",
+    elements:["status filter bar","chip filters","8-column table","bulk select","pagination"],
+    validations:["date range must be valid","bulk select max 50 rows"],
+    states:["loading rows","filtered no results","read-only for non-analysts"] },
+  "scr-detail": { title:"Refund detail — approve / reject", role:"approver", verb:"approve or reject a refund with a comment",
+    benefit:"decisions are auditable and fast", scenario:"Reject requires a reason",
+    when:"the approver clicks Reject without a comment", then:"the error 'Comment is required on rejection' is shown",
+    empty:"No pending decision",
+    elements:["refund header","amount panel (read-only)","approve button","reject button","comment box"],
+    validations:["comment required on reject","amount is read-only","cannot self-approve"],
+    states:["pending approval","already approved","request expired"] },
+  "scr-upload": { title:"Chargeback evidence upload", role:"disputes analyst", verb:"upload evidence files against a chargeback",
+    benefit:"the response is filed before the network deadline", scenario:"Oversized file rejected",
+    when:"a file larger than 25MB is dropped", then:"the error 'File exceeds 25MB (pdf/png)' is shown",
+    empty:"Drag files here to upload",
+    elements:["drag-and-drop zone","file-type hints","evidence checklist","submit button"],
+    validations:["max 25MB","pdf/png only","all checklist items ticked before submit"],
+    states:["uploading (progress)","validation error","submitted"] },
+  "scr-exceptions": { title:"Wallet sync exceptions", role:"finance controller", verb:"review and resolve wallet sync exceptions",
+    benefit:"breaks are cleared before the cutoff", scenario:"Resolve requires an owner",
+    when:"a user clicks Resolve without an owner", then:"the error 'Owner is required to resolve' is shown",
+    empty:"No open exceptions",
+    elements:["exception table","owner column","resolve button","export CSV"],
+    validations:["owner required to resolve","cannot resolve closed breaks"],
+    states:["no exceptions","resolving…","resolved with tick"] },
+  "scr-dashboard": { title:"Approver dashboard", role:"operations manager", verb:"monitor approval KPIs and my team's workload",
+    benefit:"bottlenecks are visible before they breach SLA", scenario:"KPI recalculation",
+    when:"the dashboard refreshes", then:"KPI cards show aging buckets and pending counts within 3 seconds",
+    empty:"Nothing pending — you're all caught up",
+    elements:["4 KPI cards","aging bar chart","'My approvals' list","team workload strip"],
+    validations:["date range filter","min/max KPI thresholds"],
+    states:["loading widgets","no pending approvals","partial data error"] }
+};
+
+/* ==========================================================================
+   [FEATURE 1] RENDER — rail + Jira Finder table + Query Builder
+   ========================================================================== */
+const MODULES = [
+  { id:"epics",     ico:"▣", label:"Epics" },
+  { id:"features",  ico:"◇", label:"Features" },
+  { id:"stories",   ico:"☐", label:"Stories" },
+  { id:"figma",     ico:"⬚", label:"Design Import" }
+];
+function renderRail(){
+  $("#rail").innerHTML =
+    '<div class="grp">Jira Finder</div>' +
+    MODULES.slice(0,3).map(m =>
+      '<div class="rail-item ' + (state.module === m.id ? "on" : "") + '" onclick="go(\'' + m.id + '\')">' +
+      '<span class="ico">' + m.ico + '</span>' + m.label +
+      '<span class="badge">' + DB[m.id].length + '</span></div>').join("") +
+    '<div class="grp">New from design</div>' +
+    '<div class="rail-item ' + (state.module === "figma" ? "on" : "") + '" onclick="go(\'figma\')">' +
+    '<span class="ico">⬚</span>Design Import</div>' +
+    '<div class="grp">Library</div>' +
+    '<div class="rail-item" onclick="openTemplates()"><span class="ico">⌘</span>Template Library</div>' +
+    '<div class="rail-item" onclick="openConnections()"><span class="ico">⚙</span>Connections<span class="badge">2</span></div>';
+}
+function go(m){ state.module = m; state.sel.clear(); state.jql = ""; state.filters = {status:"",assignee:""}; render(); }
+
+function rowsFor(){
+  let list = DB[state.module];
+  if (state.filters.status)   list = list.filter(i => i.status === state.filters.status);
+  if (state.filters.assignee) list = list.filter(i => i.assignee === state.filters.assignee);
+  return list;
+}
+function scoreClass(s){ return s <= 2 ? "lo" : s <= 3 ? "md" : "hi"; }
+function scoreChip(i){
+  const delta = (i.before && i.before !== i.score) ? '<span class="delta">' + i.before + ' → ' + i.score + '</span>' : "";
+  return '<span class="score ' + scoreClass(i.score) + '" onclick="openScorecard(\'' + i.key + '\')" title="Open scorecard">' +
+         '<svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="rgba(0,0,0,.12)" stroke-width="5"/>' +
+         '<circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" ' +
+         'stroke-dasharray="' + (i.score / 5 * 94) + ' 94"/></svg>' + i.score + '/5</span>' + delta;
+}
+function renderMain(){
+  if (state.module === "figma") return renderFigma();
+  const meta = MODULES.find(m => m.id === state.module);
+  const list = rowsFor();
+  const n = state.sel.size;
+  const jqlBar = state.jql ? '<div class="jql"><span class="q">' + esc(state.jql) +
+    '</span><button class="x" onclick="clearJql()" title="Clear filter">✕ clear</button></div>' : "";
+
+  const rows = list.map(i =>
+    '<tr class="' + (state.sel.has(i.key) ? "sel" : "") + '">' +
+      '<td style="width:34px"><input type="checkbox" ' + (state.sel.has(i.key) ? "checked" : "") +
+        ' onchange="toggleSel(\'' + i.key + '\',this.checked)"></td>' +
+      '<td style="width:118px"><a href="#" class="key" onclick="openScorecard(\'' + i.key + '\');return false">' + i.key + '</a></td>' +
+      '<td class="sum" title="' + esc(i.summary) + '">' + esc(i.summary) + '</td>' +
+      '<td style="width:130px"><span class="st ' + statusClass(i.status) + '">' + i.status + '</span></td>' +
+      '<td style="width:150px">' + i.assignee + '</td>' +
+      '<td style="width:140px" class="muted">' + i.updated + '</td>' +
+      '<td style="width:140px">' + scoreChip(i) + '</td>' +
+      '<td style="width:96px">' + (i.marker ? '<span class="mk">' + i.marker + '</span>' : '<span class="muted">—</span>') + '</td>' +
+      '<td class="row-act" style="width:52px"><button class="icon-btn" onclick="toggleMenu(event,\'' + i.key + '\')">⋮</button>' +
+        '<div class="menu" id="menu-' + i.key + '">' +
+          '<div class="head">' + i.key + '</div>' +
+          '<button onclick="openScorecard(\'' + i.key + '\')">🎯 Open scorecard</button>' +
+          '<button onclick="openWizard(\'polish\',\'' + i.key + '\')">✨ Polish with AI</button>' +
+          (i.type === "Epic"    ? '<button onclick="openWizard(\'split\',\'' + i.key + '\')">SplitOptions ➜ Features</button>' : "") +
+          (i.type === "Feature" ? '<button onclick="openWizard(\'stories\',\'' + i.key + '\')">✦ Break down ➜ Stories</button>' : "") +
+          '<div class="sep"></div>' +
+          '<button onclick="toast(\'Opening ' + i.key + ' in Jira…\',\'(mock — real impl opens atlassian.net)\')">↗ View in Jira</button>' +
+        '</div></td>' +
+    '</tr>').join("");
+
+  $("#main").innerHTML =
+    '<div class="page-head"><div><h1>' + meta.label + ' · Jira Finder</h1>' +
+      '<p>Find backlog items with a query, check their <b>Backlog Health Score</b>, then Polish or decompose them.</p></div>' +
+      '<div class="actions">' +
+        '<button class="btn" onclick="openQueryBuilder()">⌘ Query Builder</button>' +
+        (state.module === "epics" ? '<button class="btn primary" onclick="openWizard(\'createEpic\',null)">＋ Create Epic</button>' :
+         '<span class="btn" style="cursor:default" title="Features & Stories are created by decomposition in v1">＋ Create — via decomposition</span>') +
+      '</div></div>' + jqlBar +
+    '<div class="card"><div class="toolbar">' +
+      '<label style="display:flex;gap:8px;align-items:center;font-weight:600;font-size:13px">' +
+        '<input type="checkbox" onchange="toggleAll(this.checked)" ' + (list.length && list.every(i => state.sel.has(i.key)) ? "checked" : "") + '> Select all</label>' +
+      '<button class="btn sm" ' + (n === 0 ? "disabled" : "") + ' onclick="openBatch()">✨ Batch Polish (' + Math.min(n,10) + '/10)</button>' +
+      (n > 10 ? '<span class="muted" style="font-size:12.5px">max 10 per run</span>' : '') +
+      '<div class="right"><span class="muted" style="font-size:12.5px">' + list.length + ' of ' + DB[state.module].length +
+        ' issues · project <b>PAYOPS</b></span></div></div>' +
+    (list.length ? '<table class="grid"><thead><tr><th></th><th>Key</th><th>Summary</th><th>Status</th><th>Assignee</th>' +
+      '<th>Updated</th><th>Health Score</th><th>Marker</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>'
+      : '<div class="center-state"><b>No issues match this query</b>Adjust the Query Builder filters or clear the JQL chip.</div>') +
+    '</div>';
+}
+function render(){ renderRail(); renderMain(); }
+
+function toggleSel(key, on){ on ? state.sel.add(key) : state.sel.delete(key); renderMain(); }
+function toggleAll(on){
+  const list = rowsFor();
+  if (on) list.forEach(i => state.sel.add(i.key)); else list.forEach(i => state.sel.delete(i.key));
+  renderMain();
+}
+function toggleMenu(ev, key){
+  ev.stopPropagation();
+  document.querySelectorAll(".menu.show").forEach(m => { if (m.id !== "menu-" + key) m.classList.remove("show"); });
+  const m = document.getElementById("menu-" + key);
+  if (m) m.classList.toggle("show");
+}
+document.addEventListener("click", () => document.querySelectorAll(".menu.show").forEach(m => m.classList.remove("show")));
+function clearJql(){ state.jql = ""; state.filters = {status:"",assignee:""}; renderMain(); }
+
+function openQueryBuilder(){
+  const tName = state.module === "epics" ? "Epic" : state.module === "features" ? "Feature" : "Story";
+  openSheet({
+    title:"Query Builder", sub:"find " + tName + "s to fetch",
+    body:
+      '<p class="hint">Build a JQL query without writing JQL — preview updates live. <i>(Real impl: GET /rest/api/3/search/jql)</i></p>' +
+      '<div class="row2">' +
+        '<div><label class="f">Issue Type</label><input type="text" value="' + tName + '" readonly></div>' +
+        '<div><label class="f">Status</label><select id="qb-status"><option value="">Any status</option>' +
+          STATUSES.map(s => '<option ' + (state.filters.status === s ? "selected" : "") + '>' + s + '</option>').join("") + '</select></div>' +
+      '</div>' +
+      '<div class="row2">' +
+        '<div><label class="f">Assignee</label><select id="qb-assignee"><option value="">Anyone</option>' +
+          ASSIGNEES.map(a => '<option ' + (state.filters.assignee === a ? "selected" : "") + '>' + a + '</option>').join("") + '</select></div>' +
+        '<div><label class="f">Updated date</label><select id="qb-updated"><option>None</option><option>Last 7 days</option><option>Last 30 days</option></select></div>' +
+      '</div>' +
+      '<div class="row2">' +
+        '<div><label class="f">Labels</label><input type="text" id="qb-labels" placeholder="e.g. ai-polished" oninput="previewJql()"></div>' +
+        '<div><label class="f">Board <span class="muted">(optional)</span></label><select id="qb-board"><option value="">Not included in JQL</option>' +
+          '<option>PAYOPS Scrum</option><option>PAYOPS Kanban</option></select></div>' +
+      '</div>' +
+      '<label class="f">JQL preview</label><div class="formula" id="qb-preview"></div>',
+    foot:
+      '<button class="btn" onclick="closeModal()">Cancel</button>' +
+      '<button class="btn" onclick="qbReset()">Default</button>' +
+      '<button class="btn primary" onclick="qbApply()">Apply</button>',
+    after: previewJql
+  });
+}
+function qbJql(){
+  const tName = state.module === "epics" ? "Epic" : state.module === "features" ? "Feature" : "Story";
+  let q = 'project = PAYOPS AND issuetype = "' + tName + '"';
+  const st = ($("#qb-status") || {}).value, as = ($("#qb-assignee") || {}).value,
+        lb = (($("#qb-labels") || {}).value || "").trim(), ud = ($("#qb-updated") || {}).value;
+  if (st) q += ' AND status = "' + st + '"';
+  if (as) q += ' AND assignee = ' + (as === "Unassigned" ? "EMPTY" : '"' + as + '"');
+  if (lb) q += ' AND labels = "' + lb + '"';
+  if (ud && ud !== "None") q += ' AND updated >= "-7d"';
+  return q + " ORDER BY updated DESC";
+}
+function previewJql(){ const el = $("#qb-preview"); if (el) el.textContent = qbJql(); }
+function qbApply(){
+  state.filters = { status:($("#qb-status")||{}).value || "", assignee:($("#qb-assignee")||{}).value || "" };
+  state.jql = qbJql();
+  closeModal(); renderMain();
+  toast("Query applied", state.jql, "ok");
+}
+function qbReset(){
+  $("#qb-status").value = ""; $("#qb-assignee").value = ""; $("#qb-labels").value = ""; $("#qb-updated").selectedIndex = 0;
+  previewJql();
+}
+
+/* ==========================================================================
+   [FEATURE 2] SCORECARD — Health Score + rubric popover
+   ========================================================================== */
+const FEEDBACK = {
+  bad:  { Summary:"The summary lists multiple distinct initiatives rather than a single, concise action.",
+          Description:"Details multiple initiatives with their own scope but no cohesive business value statement or constraints.",
+          "Success Criteria":"Acceptance criteria are vague and too broad to be testable — they do not define what 'done' means.",
+          "Value Statement":"Value statement is missing or does not articulate a measurable benefit." },
+  good: { Summary:"Concise and clearly expresses the purpose of the item.",
+          Description:"Outlines business value, scope, constraints and background; details what will be delivered.",
+          "Success Criteria":"Clear, testable criteria that cover the key scenarios and edge cases.",
+          "Value Statement":"Articulates the key benefit and value proposition clearly." }
+};
+const RUBRIC = [
+  ["Summary", "1: concise, clear action/purpose · 0: missing/vague", "1"],
+  ["Description", "3: value, scope, constraints, background · 2: lacks detail · 1: vague · 0: missing", "3"],
+  ["Acceptance Criteria / Success Criteria", "3: clear, testable, covers scenarios · 2: partial · 1: imprecise · 0: missing", "3"],
+  ["Value Statement (Features only)", "1: clear articulation of value · 0: missing/vague", "1"]
+];
+function findIssue(key){ return DB.epics.concat(DB.features, DB.stories).find(i => i.key === key); }
+function openScorecard(key){
+  const i = findIssue(key);
+  const parts = i.type === "Feature"
+    ? [["Summary",0,1],["Description",2,3],["Success Criteria",1,3],["Value Statement",1,1]]
+    : [["Summary", i.score >= 4 ? 1 : 0, 1],["Description", i.score >= 4 ? 3 : i.score >= 2 ? 2 : 1, 3],
+       [i.type === "Epic" ? "Success Criteria" : "Acceptance Criteria", i.score >= 4 ? 3 : i.score >= 2 ? 1 : 1, 3]];
+  const status = i.score <= 2 ? ["Needs Attention","bad"] : i.score === 3 ? ["Average","warn"] : ["Healthy","good"];
+  const issues = parts.reduce((a,p) => a + (p[1] < p[2] ? 1 : 0), 0);
+  const circ = 2 * Math.PI * 42;
+  openSheet({
+    narrow:false,
+    title:i.key, sub:"Backlog Health Score",
+    body:
+      '<div class="score-top">' +
+        '<div class="gauge"><svg width="96" height="96"><circle cx="48" cy="48" r="42" fill="none" stroke="#ECEEF8" stroke-width="10"/>' +
+          '<circle cx="48" cy="48" r="42" fill="none" stroke="' + (i.score <= 2 ? "#E5484D" : i.score === 3 ? "#DE8A00" : "#12A150") +
+          '" stroke-width="10" stroke-linecap="round" stroke-dasharray="' + (circ * i.score / 5) + ' ' + circ + '"/></svg>' +
+          '<span class="val">' + i.score + '</span></div>' +
+        '<div class="metric"><b>' + i.score + '/5</b><span>Health Score</span></div>' +
+        '<div class="metric"><b>' + (issues ? "⚠ " + issues : "✔ 0") + '</b><span>Issues found</span></div>' +
+        '<div class="metric"><span class="pill ' + status[1] + '">' + status[0] + '</span><span>Status</span></div>' +
+        '<div style="margin-left:auto;text-align:right">' +
+          (i.before ? '<span class="mk">' + i.before + ' → ' + i.score + ' after polish</span><br>' : '') +
+          (i.marker ? '<span class="mk" style="margin-top:6px">' + i.marker + '</span>' : '') + '</div>' +
+      '</div>' +
+      '<div class="muted" style="font-size:12.5px;margin-top:10px">' + i.type + ' · ' + i.status + ' · ' + i.assignee + '</div>' +
+      parts.map(p => {
+        const cls = p[1] === 0 ? "no" : p[1] < p[2] ? "mid" : "ok";
+        const key = p[0].replace("Acceptance Criteria","Success Criteria");
+        const txt = (i.score >= 4 ? FEEDBACK.good : FEEDBACK.bad)[key] || FEEDBACK.good.Description;
+        return '<div class="fb ' + cls + '"><span class="pt" style="float:right;font-weight:800">' + p[1] + ' / ' + p[2] + '</span>' +
+               '<b>' + p[0] + ' feedback</b><p>' + txt + '</p></div>';
+      }).join("") +
+      '<button class="link-btn" style="margin-top:12px" onclick="toggleRubric()">ⓘ How scoring works</button>' +
+      '<div class="rubric" id="rubric" style="display:none">' +
+        '<b>' + i.type + ' Scorecard</b>' +
+        '<table><tr><th>Criterion</th><th>Scoring guidelines</th><th>Max</th></tr>' +
+        RUBRIC.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>').join("") + '</table>' +
+        '<div class="formula">score = floor( (sum of criterion points / max points) × 5 )</div>' +
+        '<div class="inline-note">Evaluated by the LLM on every fetch and re-evaluated after each polish so the ' +
+        'table can show <b>before → after</b>.</div>' +
+      '</div>',
+    foot:'<button class="btn" onclick="closeModal()">Close</button>' +
+         '<button class="btn primary" onclick="closeModal();openWizard(\'polish\',\'' + i.key + '\')">✨ Polish this ' + i.type + '</button>'
+  });
+}
+function toggleRubric(){ const r = $("#rubric"); if (r) r.style.display = r.style.display === "none" ? "block" : "none"; }
+
+/* ==========================================================================
+   SHEET (modal) system + shared chrome
+   ========================================================================== */
+function openSheet(opt){
+  const root = $("#modal-root");
+  root.innerHTML =
+    '<div class="sheet ' + (opt.narrow === false ? "" : opt.narrow ? "narrow" : "narrow") + '">' +
+      '<div class="sheet-head"><h2>' + esc(opt.title) + '</h2>' +
+        (opt.sub ? '<span class="k">· ' + esc(opt.sub) + '</span>' : '') +
+        '<div class="right">' + (opt.right || "") +
+        '<button class="icon-btn" onclick="closeModal()">✕</button></div></div>' +
+      '<div class="body-pad" style="padding:18px 20px">' + opt.body + '</div>' +
+      (opt.foot ? '<div class="wiz-foot">' + opt.foot + '</div>' : '') +
+    '</div>';
+  root.classList.add("show");
+  if (opt.after) opt.after();
+}
+function closeModal(){ const r = $("#modal-root"); r.classList.remove("show"); r.innerHTML = ""; }
+
+function openConnections(){
+  openSheet({
+    title:"Connections", sub:"mock — no credentials are stored",
+    body:
+      '<div class="card" style="margin-bottom:12px"><div class="pad">' +
+        '<b>Jira Cloud</b> <span class="pill good" style="float:right">Connected ●</span>' +
+        '<div class="row2" style="margin-top:8px">' +
+          '<div><label class="f" style="margin-top:0">Jira site URL</label><input type="text" value="acme-payments.atlassian.net" readonly></div>' +
+          '<div><label class="f" style="margin-top:0">Account email</label><input type="text" value="alex.k@acme-payments.com" readonly></div>' +
+        '</div>' +
+        '<div class="row2">' +
+          '<div><label class="f">API token</label><input type="password" value="••••••••••••••••••••" readonly></div>' +
+          '<div><label class="f">Project key allow-list</label><input type="text" value="PAYOPS, PAYOPS2" readonly></div>' +
+        '</div>' +
+        '<div class="inline-note">Real impl: Basic auth <span class="mono">base64(email:API-token)</span> · ' +
+        'credentials live server-side only · all writes are blocked outside the allow-list.</div>' +
+      '</div></div>' +
+      '<div class="card"><div class="pad">' +
+        '<b>Figma</b> <span class="pill good" style="float:right">Connected ●</span>' +
+        '<div class="row2" style="margin-top:8px">' +
+          '<div><label class="f" style="margin-top:0">Personal access token</label><input type="password" value="••••••••••••••" readonly></div>' +
+          '<div><label class="f" style="margin-top:0">Default team file</label><input type="text" value="figma.com/file/SF-PAYOPS-Demo" readonly></div>' +
+        '</div>' +
+        '<div class="inline-note">Real impl: <span class="mono">GET /v1/files/:key</span>, ' +
+        '<span class="mono">/v1/images/:key</span>, <span class="mono">/v1/comments/:key</span>.</div>' +
+      '</div></div>',
+    foot:'<button class="btn" onclick="closeModal()">Close</button>' +
+         '<button class="btn primary" onclick="closeModal();toast(\'Connection test passed\',\'(mock) all endpoints reachable\',\'ok\')">Test connections</button>'
+  });
+}
+function openTemplates(){
+  const T = [
+    ["Refine — Problem / Solution / Scope","Rewrites description into Context, Problem Statement, Scope Inclusions, Out of Scope. Best for Epics.","Used 128×"],
+    ["Gherkin acceptance criteria","Forces Given/When/Then scenarios incl. validation and edge cases. Best for Stories.","Used 96×"],
+    ["Compliance-heavy items","Adds audit, retention and control statements to success criteria. Used in regulated workflows.","Used 41×"],
+    ["Concise summary pass","Only rewrites the Summary for a single clear action/purpose. Fastest, lowest-risk polish.","Used 77×"]
+  ];
+  openSheet({
+    title:"Template Library", sub:"saved AI Instructions",
+    body:'<p class="hint">Pick a saved instruction set in step 2 of any wizard — or keep Standard Instructions. ' +
+         '<i>(Real impl: stored per user, selectable via “Choose from Template Library”.)</i></p>' +
+      T.map(t => '<div class="gen"><span class="tg">⌘</span><span class="ttl">' + t[0] +
+        '<span class="sub">' + t[1] + '</span></span><span class="tools muted" style="font-size:12px">' + t[2] + '</span></div>').join(""),
+    foot:'<button class="btn" onclick="closeModal()">Close</button>'
+  });
+}
+
+/* ==========================================================================
+   [FEATURE 3 & 4] WIZARD ENGINE — Details ▸ Instructions ▸ Draft ▸ Publish
+   ========================================================================== */
+let W = null;
+const STEPS = ["Details","Instructions","Draft","Assign & Publish"];
+function openWizard(kind, key){
+  const issue = key ? findIssue(key) : null;
+  W = {
+    kind, key, step:0, issue,
+    data:{
+      fields:{ summary:true, description:true, successCriteria:true, value:true },
+      mode:"standard", template:"", extra:"", files:[],
+      requirement:"", extraInfo:"", proposal:null, epic:null, features:null, stories:null,
+      assignee:"", label:(kind === "polish" ? "ai-polished" : "ai-draft"),
+      sel:(kind === "split" || kind === "stories") ? new Set() : null,
+      expanded:{}
+    }
+  };
+  if (W.data.sel === null) delete W.data.sel;
+  renderWizard();
+}
+function closeWizard(){ W = null; closeModal(); }
+
+function renderWizard(){
+  const titles = { polish:"Polish with AI", createEpic:"Create Epic", split:"Split into Features", stories:"Break down into Stories" };
+  const t = W.issue ? titles[W.kind] + ' <span class="k">' + W.issue.key + '</span>' : titles[W.kind];
+  const footer =
+    '<button class="btn" onclick="closeWizard()">Cancel</button>' +
+    (W.step > 0 ? '<button class="btn" onclick="wizBack()">Back</button>' : '') +
+    (W.step < 3
+      ? '<button class="btn primary" id="wiz-next" onclick="wizNext()">Next</button>'
+      : '<button class="btn primary" id="wiz-next" onclick="wizFinal()">' +
+        (W.kind === "polish" ? "Approve &amp; Sync" : "Create in Jira") + '</button>');
+
+  $("#modal-root").innerHTML =
+    '<div class="sheet"><div class="sheet-head"><h2>' + t + '</h2>' +
+      '<span class="k">· ' + (W.kind === "polish" ? "improve existing fields" : "generate new Jira issues") + '</span>' +
+      '<div class="right"><button class="icon-btn" onclick="closeWizard()">✕</button></div></div>' +
+    '<div class="wiz"><ol class="stepper">' +
+      STEPS.map((s, idx) => '<li class="' + (idx < W.step ? "done" : idx === W.step ? "on" : "") + '">' +
+        '<span class="dot">' + (idx < W.step ? "✓" : idx + 1) + '</span>' + s + '</li>').join("") +
+    '</ol>' +
+    '<div class="wiz-body">' + wizardContent() + '</div></div>' +
+    '<div class="wiz-foot">' + footer + '</div></div>';
+  $("#modal-root").classList.add("show");
+  if (W.step === 2 && !draftDone()) runDraft();
+  const ta = $("#wiz-req");
+  if (ta) ta.addEventListener("input", () => { W.data.requirement = ta.value; $("#req-count").textContent = ta.value.length + " chars (min 5)"; });
+  const ex = $("#wiz-extra");
+  if (ex) ex.addEventListener("input", () => { W.data.extra = ex.value; $("#extra-count").textContent = ex.value.length + "/2000"; });
+}
+function draftDone(){
+  const d = W.data;
+  return !!(d.proposal || d.epic || d.features || d.stories);
+}
+function wizBack(){ if (W.step > 0){ W.step--; renderWizard(); } }
+function wizNext(){
+  if (W.step === 0 && W.kind === "createEpic" && (W.data.requirement || "").trim().length < 5){
+    if (!$("#req-err")) $("#wiz-next").insertAdjacentHTML("afterend", '<span class="err" id="req-err" style="margin-right:10px">Requirement must be at least 5 characters</span>');
+    return;
+  }
+  W.step++;
+  renderWizard();
+}
+async function wizFinal(){
+  const btn = $("#wiz-next");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin sm" style="border-top-color:#fff;border-color:rgba(255,255,255,.4);border-top-color:#fff"></span> ' +
+                  (W.kind === "polish" ? "Syncing to Jira…" : "Creating in Jira…");
+  await sleep(950);
+  if (W.kind === "polish") applyPolish();
+  else if (W.kind === "createEpic") applyCreateEpic();
+  else if (W.kind === "split") applySplit();
+  else if (W.kind === "stories") applyStories();
+  closeWizard();
+  state.sel.clear();
+  render();
+}
+
+/* ---- step content ------------------------------------------------------- */
+function wizardContent(){
+  const d = W.data;
+  if (W.step === 0) return stepDetails();
+  if (W.step === 1) return stepInstructions();
+  if (W.step === 2) return stepDraft();
+  return stepPublish();
+}
+function stepDetails(){
+  const d = W.data;
+  if (W.kind === "polish"){
+    const i = W.issue;
+    return '<h3>Details</h3><p class="hint">Review the current Jira fields, then choose what the AI should improve. ' +
+      '<i>(Real impl: GET /rest/api/3/issue/' + i.key + ')</i></p>' +
+      '<div class="card"><div class="pad">' +
+        '<div style="display:flex;gap:10px;align-items:center"><span class="st ' + statusClass(i.status) + '">' + i.status + '</span>' +
+        '<b>' + i.key + '</b>' + scoreChip(i) + '</div>' +
+        '<div style="margin-top:9px;font-weight:650">' + esc(i.summary) + '</div>' +
+        '<div class="muted" style="font-size:12.5px;margin-top:4px">' + i.type + ' · ' + i.assignee + ' · updated ' + i.updated + '</div>' +
+      '</div></div>' +
+      '<label class="f">Fields to Improve</label>' +
+      '<div class="checks">' +
+        ["summary","description","successCriteria","value"].map(f => {
+          const nm = {summary:"Summary",description:"Description",successCriteria:"Success Criteria",value:"Value Statement"}[f];
+          return '<label><input type="checkbox" ' + (d.fields[f] ? "checked" : "") +
+                 ' onchange="W.data.fields.' + f + '=this.checked">' + nm + '</label>';
+        }).join("") +
+      '</div>' +
+      '<div class="inline-note">Value Statement is not a Jira field for Epics — the real impl hides it unless the ' +
+      'project has a custom field mapped.</div>';
+  }
+  if (W.kind === "createEpic"){
+    return '<h3>Details</h3><p class="hint">Describe the requirement in plain language — the AI drafts a full Product Epic.</p>' +
+      '<label class="f">Issue type</label><input type="text" value="Epic" readonly>' +
+      '<label class="f">Your description / requirement *</label>' +
+      '<textarea id="wiz-req" placeholder="e.g. Create an epic for Payments Ops covering refund orchestration, chargeback rules and wallet sync">' +
+      esc(d.requirement) + '</textarea>' +
+      '<div class="counter" id="req-count">' + d.requirement.length + ' chars (min 5)</div>';
+  }
+  if (W.kind === "split"){
+    return '<h3>Details</h3><p class="hint">Decompose an Epic into independently releasable Features.</p>' +
+      '<div class="card"><div class="pad"><b>' + W.issue.key + '</b><div style="margin-top:6px">' +
+        esc(W.issue.summary) + '</div><div class="muted" style="font-size:12.5px;margin-top:5px">Health Score ' +
+        W.issue.score + '/5</div></div></div>' +
+      '<label class="f">Additional description / instructions</label>' +
+      '<input type="text" id="wiz-extra" value="' + esc(d.extra) + '" placeholder="e.g. analysis and generate features">';
+  }
+  return '<h3>Details</h3><p class="hint">Break a Feature into sprint-ready Stories with Gherkin acceptance criteria.</p>' +
+    '<div class="card"><div class="pad"><b>' + W.issue.key + '</b><div style="margin-top:6px">' +
+      esc(W.issue.summary) + '</div></div></div>' +
+    '<label class="f">Additional description / instructions</label>' +
+    '<input type="text" id="wiz-extra" value="' + esc(d.extra) + '" placeholder="e.g. keep stories under 5 points">';
+}
+function stepInstructions(){
+  const d = W.data;
+  return '<h3>Instructions</h3><p class="hint">Standard Instructions are tuned per workflow — or pick a saved set. ' +
+    '<i>(Real impl: Template Library + prompt versioning.)</i></p>' +
+    '<label class="f">AI Instructions</label>' +
+    '<div class="radio-line">' +
+      '<label><input type="radio" name="pm" ' + (d.mode === "standard" ? "checked" : "") +
+        ' onchange="W.data.mode=\'standard\';renderWizard()"> Use Standard Instructions</label>' +
+      '<label><input type="radio" name="pm" ' + (d.mode === "lib" ? "checked" : "") +
+        ' onchange="W.data.mode=\'lib\';renderWizard()"> Choose from Template Library <span class="mk">4</span></label>' +
+    '</div>' +
+    (d.mode === "lib"
+      ? '<select onchange="W.data.template=this.value" style="margin-top:9px">' +
+        '<option value="">Search templates…</option>' +
+        '<option>Refine — Problem / Solution / Scope</option><option>Gherkin acceptance criteria</option>' +
+        '<option>Compliance-heavy items</option><option>Concise summary pass</option></select>'
+      : '') +
+    '<label class="f">Associate Jira issues <span class="muted">(optional)</span></label>' +
+    '<input type="text" placeholder="e.g. PAYOPS-101, PAYOPS-95">' +
+    '<label class="f">Extra instructions <span class="muted">(optional)</span></label>' +
+    '<textarea id="wiz-extra" maxlength="2000" placeholder="e.g. keep the existing tone; do not mention vendor names">' +
+    esc(d.extra) + '</textarea><div class="counter" id="extra-count">' + d.extra.length + '/2000</div>' +
+    '<label class="f">Upload context <span class="muted">(optional)</span></label>' +
+    '<div class="drop" onclick="addMockFile()">⬆ Drag &amp; drop a file here, or <b>browse</b><br>' +
+    '<span style="font-size:12px">.txt .csv .json .yml .yaml .md .docx .pdf .jpg .jpeg .png .gif</span></div>' +
+    '<div>' + d.files.map(f => '<span class="filepill">📄 ' + esc(f) + '</span>').join("") + '</div>' +
+    '<div class="inline-note">Uploaded content is treated as <b>data, never instructions</b> (prompt-injection guardrail).</div>';
+}
+function addMockFile(){
+  const pool = ["refund-srs-v3.docx","queue-metrics.csv","approval-rules.json"];
+  const f = pool[W.data.files.length % pool.length];
+  if (!W.data.files.includes(f)) W.data.files.push(f);
+  renderWizard();
+}
+async function runDraft(){
+  const d = W.data;
+  const box = $("#draft-box");
+  if (box){
+    box.innerHTML = '<div class="center-state"><div class="spin"></div><b>' +
+      (W.kind === "polish" ? "Drafting your proposal…" : W.kind === "createEpic" ? "Drafting your Epic…" :
+       W.kind === "split" ? "Splitting into Features…" : "Breaking down into Stories…") +
+      '</b>Simulated LLM call — 1.4s (real impl validates JSON schema before rendering).</div>';
+  }
+  await sleep(1400);
+  if (!W) return;
+  if (W.kind === "polish")       d.proposal = MOCK_AI.refine(W.issue);
+  else if (W.kind === "createEpic") d.epic = MOCK_AI.createEpic(d.requirement);
+  else if (W.kind === "split")   { d.features = MOCK_AI.splitEpic(W.issue); d.features.forEach((f,ix) => d.sel.add(String(ix))); }
+  else                           { d.stories = MOCK_AI.breakDown(W.issue); d.stories.forEach((s,ix) => d.sel.add(String(ix))); }
+  renderWizard();
+}
+function stepDraft(){
+  const d = W.data;
+  if (W.kind === "polish" && !d.proposal) return '<h3>Draft</h3><div id="draft-box"></div>';
+  if (W.kind === "createEpic" && !d.epic)  return '<h3>Draft</h3><div id="draft-box"></div>';
+  if (W.kind === "split" && !d.features)   return '<h3>Draft</h3><div id="draft-box"></div>';
+  if (W.kind === "stories" && !d.stories)  return '<h3>Draft</h3><div id="draft-box"></div>';
+
+  if (W.kind === "polish"){
+    const p = d.proposal;
+    return '<h3>Draft</h3><p class="hint">AI Proposal — re-scored automatically. Continue to compare it with the current Jira fields.</p>' +
+      '<div class="score-top" style="background:var(--good-soft);border:1px solid #BFE8D0;border-radius:12px;padding:13px 15px">' +
+        '<div class="metric" style="border:0"><b style="color:#0C7A3E">5/5</b><span>Draft Health Score</span></div>' +
+        '<div class="metric" style="border:0"><b style="color:#0C7A3E">✔ 0</b><span>Issues found</span></div>' +
+        '<div class="metric" style="border:0"><span class="pill good">Healthy</span><span>vs ' + W.issue.score + '/5 now</span></div>' +
+      '</div>' +
+      '<label class="f">Proposed summary</label>' +
+      '<div class="card"><div class="pad" style="font-weight:650">' + esc(p.fields.summary) + '</div></div>' +
+      '<label class="f">Proposed success criteria (excerpt)</label>' +
+      '<div class="card"><div class="pad mono" style="white-space:pre-wrap">' + esc(p.fields.successCriteria.split("\n").slice(0,3).join("\n")) + '</div></div>' +
+      '<div class="inline-note">Only the fields ticked in step 1 will be written on sync.</div>';
+  }
+  if (W.kind === "createEpic"){
+    const e = d.epic;
+    return '<h3>Draft</h3><p class="hint">Generated Product Epic — continue to assign and publish.</p>' +
+      '<div class="gen"><span class="tg">Epic</span><span class="ttl">' + esc(e.title) +
+        '<span class="sub"><b>Value:</b> ' + esc(e.value) + '</span></span></div>' +
+      '<label class="f">Description preview</label>' +
+      '<div class="card"><div class="pad" style="white-space:pre-wrap;font-size:13px">' + esc(e.description) + '</div></div>';
+  }
+  const list = W.kind === "split" ? d.features : d.stories;
+  const tag  = W.kind === "split" ? "Feature" : "Story";
+  const ixKey = W.kind === "split" ? "features" : "stories";
+  return '<h3>' + (W.kind === "split" ? "Generated Features" : "Generated Stories") + ' (' + list.length + ')</h3>' +
+    '<p class="hint">Click a row to expand. Edit ✎ or remove 🗑 before publishing. ' +
+    '<i>(Real impl: everything is editable, regenerate per item.)</i></p>' +
+    list.map((it, ix) => {
+      const open = d.expanded[ix];
+      const detail = W.kind === "split"
+        ? '<b>Value:</b> ' + esc(it.value) + '\n\n<b>Success criteria:</b>\n' + esc(it.successCriteria)
+        : esc(it.story) + '\n\n' + esc(it.ac);
+      return '<div class="gen"><input type="checkbox" ' + (d.sel.has(String(ix)) ? "checked" : "") +
+          ' onchange="wizToggleGen(' + ix + ',this.checked)">' +
+        '<span class="ttl" onclick="wizExpand(' + ix + ')" style="cursor:pointer">' +
+          '<span class="tg" style="margin-right:7px">' + tag + ' ' + (ix + 1) + '</span>' + esc(it.title) +
+          (W.kind === "stories" ? ' <span class="muted">· ' + it.points + ' pts</span>' : '') +
+          (open ? '<span class="sub">' + detail.replace(/\n/g, "<br>") + '</span>' : '') +
+        '</span>' +
+        '<span class="tools"><button class="icon-btn" title="Edit (mock)" onclick="toast(\'Inline editor\',\'(mock) every generated field is editable\')">✎</button>' +
+        '<button class="icon-btn" title="Regenerate (mock)" onclick="event.stopPropagation();toast(\'Regenerating item ' + (ix + 1) + '…\',\'(mock)\')">↻</button>' +
+        '<button class="icon-btn" title="Remove (mock)" onclick="event.stopPropagation();wizToggleGen(' + ix + ',false)">🗑</button></span></div>';
+    }).join("") +
+    '<div class="inline-note">' + d.sel.size + ' of ' + list.length + ' selected — selection carries to the publish step.</div>';
+}
+function wizExpand(ix){ W.data.expanded[ix] = !W.data.expanded[ix]; renderWizard(); }
+function wizToggleGen(ix, on){
+  const k = String(ix);
+  on ? W.data.sel.add(k) : W.data.sel.delete(k);
+  renderWizard();
+}
+function stepPublish(){
+  const d = W.data;
+  const assigneeRow =
+    '<label class="f">Project</label><input type="text" value="PAYOPS — Payments Operations" readonly>' +
+    '<div class="row2"><div><label class="f">Assignee <span class="muted">(optional)</span></label>' +
+      '<select onchange="W.data.assignee=this.value"><option value="">Leave unassigned</option>' +
+      ASSIGNEES.map(a => '<option>' + a + '</option>').join("") + '</select></div>' +
+      '<div><label class="f">Marker label</label><input type="text" value="' + d.label + '" readonly></div></div>';
+
+  if (W.kind === "polish"){
+    const p = d.proposal, f = W.issue.fields || fieldsFromIssue(W.issue);
+    const rows = [["Summary","summary"],["Description","description"],
+                  [W.issue.type === "Epic" ? "Success Criteria" : "Success Criteria","successCriteria"],["Value Statement","value"]]
+      .filter(r => d.fields[r[1]]);
+    return '<h3>Assign &amp; Publish · Change Review</h3>' +
+      '<div class="diff-head"><b>' + W.issue.key + '</b>' +
+        '<div class="seg"><button id="seg-side" class="on" onclick="setDiff(\'side\')">Side-by-side</button>' +
+        '<button id="seg-in" onclick="setDiff(\'inline\')">Inline</button></div>' +
+        '<span class="chip-delta" style="margin-left:0">' + W.issue.score + '/5 → 5/5</span></div>' +
+      '<div id="diff-wrap">' + rows.map(r => diffSection(r[0], f[r[1]] || "Not Found", p.fields[r[1]])).join("") + '</div>' +
+      assigneeRow +
+      '<div class="inline-note"><b>Approve &amp; Sync</b> writes only the ticked fields (PUT /issue/' + W.issue.key +
+      '), adds <span class="mk">' + d.label + '</span> label, then re-scores.</div>';
+  }
+  if (W.kind === "createEpic"){
+    const e = d.epic;
+    return '<h3>Assign &amp; Publish</h3><p class="hint">1 epic generated — confirm destination fields.</p>' +
+      '<div class="gen"><input type="checkbox" checked><span class="tg">Epic</span>' +
+        '<span class="ttl">' + esc(e.title) + '</span></div>' + assigneeRow +
+      '<div class="inline-note"><b>Create in Jira</b> → POST /rest/api/3/issue (project PAYOPS, issuetype Epic).</div>';
+  }
+  const list = W.kind === "split" ? d.features : d.stories;
+  const tag  = W.kind === "split" ? "Feature" : "Story";
+  return '<h3>Assign &amp; Publish</h3>' +
+    '<p class="hint">' + d.sel.size + ' of ' + list.length + ' ' + tag.toLowerCase() +
+      's selected — unselect any you do not want created.</p>' +
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">' +
+      '<label style="font-size:12.5px;font-weight:700"><input type="checkbox" ' +
+      (d.sel.size === list.length ? "checked" : "") + ' onchange="wizSelectAll(this.checked)"> Select all (' +
+      d.sel.size + '/' + list.length + ')</label></div>' +
+    list.map((it, ix) =>
+      '<div class="gen"><input type="checkbox" ' + (d.sel.has(String(ix)) ? "checked" : "") +
+      ' onchange="wizToggleGen(' + ix + ',this.checked)"><span class="tg">' + tag + ' ' + (ix + 1) + '</span>' +
+      '<span class="ttl">' + esc(it.title) + (W.kind === "stories" ? ' <span class="muted">· ' + it.points + ' pts</span>' : '') +
+      '</span></div>').join("") +
+    assigneeRow +
+    '<div class="inline-note"><b>Create in Jira</b> → POST /rest/api/3/issue × ' + d.sel.size +
+      (W.kind === "split" ? ' · parent linked to ' + W.issue.key : W.kind === "stories" ? ' · parent linked to ' + W.issue.key : '') +
+      ' · marker label applied.</div>';
+}
+function wizSelectAll(on){
+  const list = W.kind === "split" ? W.data.features : W.data.stories;
+  if (on) list.forEach((_, ix) => W.data.sel.add(String(ix))); else W.data.sel.clear();
+  renderWizard();
+}
+function fieldsFromIssue(i){
+  return { summary:i.summary,
+    description:"(original description — in the real app this is the Jira description field fetched with the issue)",
+    successCriteria:"(original success criteria)", value:"(original value statement)" };
+}
+function diffSection(name, cur, inc){
+  return '<div class="diff-sec"><div class="diff-head"><b>' + name + '</b>' +
+    '<span class="chip-delta">' + scoreDelta(name) + '</span></div>' +
+    '<div class="diff-grid" id="dg-' + name.replace(/\s/g, "") + '">' +
+      '<div class="diff-col cur"><h4><span class="tag">Current</span> Jira</h4><div class="body">' + esc(cur) + '</div></div>' +
+      '<div class="diff-col inc"><h4><span class="tag">Incoming</span> AI proposal</h4><div class="body">' + esc(inc) + '</div></div>' +
+    '</div></div>';
+}
+function scoreDelta(name){
+  const map = { "Summary":"0/1 → 1/1", "Description":"2/3 → 3/3", "Success Criteria":"1/3 → 3/3", "Value Statement":"0/1 → 1/1" };
+  return map[name] || "improved";
+}
+function setDiff(mode){
+  const side = mode === "side";
+  document.getElementById("seg-side").classList.toggle("on", side);
+  document.getElementById("seg-in").classList.toggle("on", !side);
+  document.querySelectorAll(".diff-grid").forEach(g => {
+    g.style.gridTemplateColumns = side ? "1fr 1fr" : "1fr";
+    const inc = g.querySelector(".inc");
+    if (inc) inc.style.display = side ? "" : "none";
+  });
+  if (!side){
+    document.querySelectorAll(".diff-col.cur").forEach(c => {
+      if (!c.querySelector(".merged-note")){
+        const h = c.querySelector("h4");
+        h.innerHTML = '<span class="tag">Inline</span> Current with AI changes highlighted ' +
+          '<span class="chip-delta" style="margin-left:6px">proposed text shown in green below</span>';
+        c.insertAdjacentHTML("beforeend", '<div class="diff-col inc" style="margin-top:10px"><div class="body">' +
+          esc(c.parentElement.querySelector(".inc .body").textContent) + '</div></div>');
+        c.classList.add("merged-note");
+      }
+    });
+  } else { document.querySelectorAll(".diff-col.cur.merged-note .diff-col").forEach(x => x.remove()); }
+}
+
+/* ---- publish side-effects ---------------------------------------------- */
+function applyPolish(){
+  const d = W.data, i = W.issue, p = d.proposal;
+  i.before = i.score;
+  i.fields = i.fields || fieldsFromIssue(i);
+  if (d.fields.summary)     i.summary = p.fields.summary;
+  ["description","successCriteria","value"].forEach(k => { if (d.fields[k]) i.fields[k] = p.fields[k]; });
+  i.score = 5;
+  i.marker = d.label;
+  toast(i.key + " synced to Jira", "Health Score " + i.before + " → 5 · label '" + d.label + "' added", "ok");
+}
+function nextKey(list){
+  const max = list.reduce((a, i) => Math.max(a, parseInt(i.key.split("-")[1], 10) || 0), 100);
+  return "PAYOPS-" + (max + 1);
+}
+function applyCreateEpic(){
+  const d = W.data, e = d.epic;
+  const key = nextKey(DB.epics);
+  DB.epics.unshift({
+    key, type:"Epic", status:"Backlog", assignee:d.assignee || "Unassigned",
+    updated:"2026-11-06 09:12", score:5, before:null, marker:d.label,
+    summary:e.title,
+    fields:{ summary:e.title, description:e.description, successCriteria:e.successCriteria, value:e.value }
+  });
+  toast(key + " created in Jira", "Epic · label '" + d.label + "' · Score 5/5", "ok");
+}
+function applySplit(){
+  const d = W.data;
+  const picked = d.features.filter((_, ix) => d.sel.has(String(ix)));
+  picked.forEach(f => DB.features.unshift({
+    key:nextKey(DB.features), type:"Feature", status:"Backlog", assignee:d.assignee || "Unassigned",
+    updated:"2026-11-06 09:12", score:5, before:null, marker:d.label, summary:f.title,
+    fields:{ summary:f.title, description:f.value, successCriteria:f.successCriteria, value:f.value }
+  }));
+  toast(picked.length + " Features created in Jira", "parent: " + W.issue.key + " · label '" + d.label + "'", "ok");
+}
+function applyStories(){
+  const d = W.data;
+  const picked = d.stories.filter((_, ix) => d.sel.has(String(ix)));
+  picked.forEach(s => DB.stories.unshift({
+    key:nextKey(DB.stories), type:"Story", status:"Backlog", assignee:d.assignee || "Unassigned",
+    updated:"2026-11-06 09:12", score:5, before:null, marker:d.label,
+    summary:s.story, fields:{ summary:s.story, description:s.story, successCriteria:s.ac, value:"" }
+  }));
+  toast(picked.length + " Stories created in Jira", "parent: " + W.issue.key + " · Gherkin AC included · " + d.label, "ok");
+}
+
+/* ==========================================================================
+   [FEATURE 5] BATCH POLISH — multi-select run with partial failure
+   ========================================================================== */
+function openBatch(){
+  const keys = Array.from(state.sel).slice(0, 10);
+  if (!keys.length) return;
+  openSheet({
+    title:"Batch Polish", sub:keys.length + " issue" + (keys.length > 1 ? "s" : "") + " · max 10 per run",
+    body:
+      '<p class="hint">Each issue is refined with Standard Instructions, re-scored, then synced. ' +
+      'Failures never block the rest of the queue. <i>(Real impl: server-side queue + rate limiting.)</i></p>' +
+      '<div class="bar"><i id="bp-bar" style="width:0%"></i></div>' +
+      '<div class="muted" id="bp-summary" style="font-size:12.5px">Waiting to start…</div>' +
+      '<div style="margin-top:12px">' +
+        keys.map(k => {
+          const i = findIssue(k);
+          return '<div class="batch-row" id="bp-' + k + '"><b>' + k + '</b>' +
+            '<span class="muted" style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46%">' +
+            esc(i.summary) + '</span>' +
+            '<span class="muted" style="font-size:12.5px">' + i.score + '/5</span>' +
+            '<span class="stt q">Queued</span></div>';
+        }).join("") +
+      '</div>',
+    foot:'<button class="btn" onclick="closeModal()">Close</button>' +
+         '<button class="btn primary" id="bp-run" onclick="runBatch()">Run Batch Polish</button>'
+  });
+  window.__batchKeys = keys;
+}
+async function runBatch(){
+  const keys = window.__batchKeys || [];
+  const btn = $("#bp-run");
+  btn.disabled = true; btn.textContent = "Running…";
+  let done = 0, failed = 0;
+  for (let n = 0; n < keys.length; n++){
+    const k = keys[n], row = document.getElementById("bp-" + k);
+    row.querySelector(".stt").className = "stt r";
+    row.querySelector(".stt").textContent = "Polishing…";
+    await sleep(600);
+    /* deterministic mock failure: every 4th issue fails schema validation */
+    const fail = (n + 1) % 4 === 0;
+    if (fail){
+      failed++; done++;
+      row.querySelector(".stt").className = "stt f";
+      row.querySelector(".stt").textContent = "Failed — schema validation";
+    } else {
+      const i = findIssue(k);
+      i.before = i.score; i.score = 5; i.marker = "ai-polished";
+      done++;
+      row.querySelector(".stt").className = "stt d";
+      row.querySelector(".stt").textContent = "Synced ✓ " + i.before + " → 5";
+    }
+    $("#bp-bar").style.width = Math.round(done / keys.length * 100) + "%";
+    $("#bp-summary").textContent = done + " of " + keys.length + " processed" +
+      (failed ? " · " + failed + " failed" : "");
+  }
+  btn.textContent = failed ? "Retry failed (" + failed + ")" : "Done ✓";
+  if (!failed) btn.onclick = () => { closeModal(); render(); };
+  else btn.onclick = () => { toast("Retrying failed items", "(mock) retry succeeded on second attempt", "ok");
+    keys.filter((_, n) => (n + 1) % 4 === 0).forEach(k => { const i = findIssue(k); i.before = i.score; i.score = 5; i.marker = "ai-polished"; });
+    closeModal(); render(); };
+  toast("Batch finished", done - failed + " polished · " + failed + " failed", failed ? "err" : "ok");
+}
+
+/* ==========================================================================
+   [FEATURE 6] DESIGN IMPORT — Figma → Jira Stories (5-step in-page flow)
+   ========================================================================== */
+const F_STEPS = ["Connect","Select screens","Analyze","Compose stories","Publish"];
+const SCREENS = [
+  { id:"scr-login",     name:"01 · Login & MFA" },
+  { id:"scr-queue",     name:"02 · Refund queue — list" },
+  { id:"scr-detail",    name:"03 · Refund detail — approve" },
+  { id:"scr-upload",    name:"04 · Evidence upload" },
+  { id:"scr-exceptions",name:"05 · Wallet sync exceptions" },
+  { id:"scr-dashboard", name:"06 · Approver dashboard" }
+];
+const F = { step:1, connected:false, sel:new Set(), specs:null, stories:null, done:false };
+
+function screenSvg(id, w){
+  w = w || 250;
+  const h = Math.round(w * 0.55);
+  const bg = '<rect width="300" height="165" fill="#EDEFF8"/>';
+  const bar = '<rect x="0" y="0" width="300" height="20" fill="#141833"/>' +
+              '<circle cx="10" cy="10" r="3.5" fill="#6459E8"/>';
+  const parts = {
+    "scr-login":
+      '<rect x="95" y="34" width="110" height="110" rx="8" fill="#fff" stroke="#D7DAEC"/>' +
+      '<rect x="107" y="48" width="86" height="12" rx="3" fill="#D7DAEC"/>' +
+      '<rect x="107" y="66" width="86" height="12" rx="3" fill="#D7DAEC"/>' +
+      '<rect x="107" y="84" width="86" height="12" rx="3" fill="#EEEDFD" stroke="#6459E8" stroke-dasharray="3 2"/>' +
+      '<rect x="107" y="104" width="86" height="14" rx="7" fill="#6459E8"/>' +
+      '<rect x="107" y="124" width="52" height="7" rx="3" fill="#EDEFF8"/>',
+    "scr-queue":
+      '<rect x="12" y="28" width="276" height="16" rx="4" fill="#fff" stroke="#D7DAEC"/>' +
+      '<rect x="18" y="32" width="44" height="8" rx="4" fill="#EEEDFD"/>' +
+      '<rect x="68" y="32" width="36" height="8" rx="4" fill="#E9F2FE"/>' +
+      '<rect x="12" y="52" width="276" height="98" rx="6" fill="#fff" stroke="#D7DAEC"/>' +
+      '<rect x="12" y="52" width="276" height="14" fill="#F6F7FC"/>' +
+      [0,1,2,3,4].map(r => '<rect x="20" y="' + (74 + r * 15) + '" width="260" height="7" rx="3.5" fill="' + (r % 2 ? "#EDEFF8" : "#F6F7FC") + '"/>').join(""),
+    "scr-detail":
+      '<rect x="12" y="28" width="170" height="122" rx="6" fill="#fff" stroke="#D7DAEC"/>' +
+      '<rect x="22" y="40" width="90" height="9" rx="4" fill="#D7DAEC"/>' +
+      '<rect x="22" y="56" width="150" height="7" rx="3" fill="#EDEFF8"/>' +
+      '<rect x="22" y="68" width="130" height="7" rx="3" fill="#EDEFF8"/>' +
+      '<rect x="22" y="84" width="150" height="30" rx="5" fill="#F6F7FC" stroke="#E5E7F2"/>' +
+      '<rect x="192" y="28" width="96" height="58" rx="6" fill="#fff" stroke="#D7DAEC"/>' +
+      '<rect x="202" y="40" width="76" height="24" rx="4" fill="#F6F7FC"/>' +
+      '<rect x="192" y="94" width="46" height="18" rx="9" fill="#12A150"/>' +
+      '<rect x="242" y="94" width="46" height="18" rx="9" fill="#fff" stroke="#E5484D"/>' +
+      '<rect x="192" y="120" width="96" height="30" rx="5" fill="#F6F7FC" stroke="#E5E7F2" stroke-dasharray="3 2"/>',
+    "scr-upload":
+      '<rect x="30" y="40" width="240" height="80" rx="8" fill="#fff" stroke="#6459E8" stroke-dasharray="6 4"/>' +
+      '<text x="150" y="76" font-family="Segoe UI,sans-serif" font-size="11" fill="#6459E8" text-anchor="middle">Drop files (pdf/png, max 25MB)</text>' +
+      '<rect x="30" y="128" width="70" height="14" rx="4" fill="#EEEDFD"/><rect x="108" y="128" width="70" height="14" rx="4" fill="#EEEDFD"/>' +
+      '<rect x="186" y="128" width="70" height="14" rx="4" fill="#6459E8"/>',
+    "scr-exceptions":
+      '<rect x="12" y="28" width="276" height="16" rx="4" fill="#fff" stroke="#D7DAEC"/>' +
+      '<rect x="18" y="32" width="60" height="8" rx="4" fill="#FFF4E2"/>' +
+      '<rect x="12" y="52" width="276" height="98" rx="6" fill="#fff" stroke="#D7DAEC"/>' +
+      [0,1,2,3,4].map(r => '<rect x="20" y="' + (62 + r * 17) + '" width="180" height="8" rx="4" fill="#EDEFF8"/>' +
+        '<rect x="240" y="' + (60 + r * 17) + '" width="40" height="12" rx="6" fill="' + (r === 1 ? "#E9F8EF" : "#F6F7FC") +
+        '" stroke="#D7DAEC"/>').join(""),
+    "scr-dashboard":
+      [0,1,2,3].map(c => '<rect x="' + (12 + c * 70) + '" y="28" width="62" height="36" rx="6" fill="#fff" stroke="#D7DAEC"/>' +
+        '<rect x="' + (20 + c * 70) + '" y="36" width="30" height="10" rx="4" fill="#EEEDFD"/>' +
+        '<rect x="' + (20 + c * 70) + '" y="50" width="20" height="7" rx="3" fill="#D7DAEC"/>').join("") +
+      '<rect x="12" y="72" width="176" height="78" rx="6" fill="#fff" stroke="#D7DAEC"/>' +
+      [0,1,2,3,4].map(c => '<rect x="' + (24 + c * 32) + '" y="' + (140 - (c % 3 + 1) * 18) + '" width="18" height="' + ((c % 3 + 1) * 18) + '" rx="3" fill="#6459E8" opacity="' + (0.5 + c * 0.1) + '"/>').join("") +
+      '<rect x="196" y="72" width="92" height="78" rx="6" fill="#fff" stroke="#D7DAEC"/>' +
+      [0,1,2].map(r => '<rect x="204" y="' + (84 + r * 20) + '" width="76" height="9" rx="4" fill="#EDEFF8"/>').join("")
+  };
+  return '<svg viewBox="0 0 300 165" width="' + w + '" height="' + h + '" preserveAspectRatio="xMidYMid slice">' +
+         bg + bar + (parts[id] || "") + '</svg>';
+}
+function renderFigma(){
+  const stepsBar = '<div class="fstep">' + F_STEPS.map((s, ix) =>
+    '<div class="s ' + (F.step === ix + 1 ? "on" : F.step > ix + 1 ? "done" : "") + '">' +
+    '<span class="n">' + (F.step > ix + 1 ? "✓" : ix + 1) + '</span>' + s + '</div>').join("") + '</div>';
+
+  let body = "";
+  if (F.step === 1){
+    body = '<div class="card"><div class="pad">' +
+      '<h3 style="margin:0 0 4px">Connect Figma</h3>' +
+      '<p class="hint">Paste a file link and token — or use the demo file already shared with the tool.</p>' +
+      '<label class="f">Figma file URL</label><input type="text" id="fg-url" value="https://figma.com/file/SF-PAYOPS-Demo/Payments-Ops?node-id=0-1">' +
+      '<label class="f">Personal access token</label><input type="password" value="••••••••••••••••">' +
+      '<div class="inline-note">Real impl: <span class="mono">GET /v1/files/:key</span> to validate, then ' +
+      '<span class="mono">/v1/images/:key</span> to render frames.</div>' +
+      '<div style="margin-top:14px"><button class="btn primary" onclick="figmaConnect(this)">Connect</button></div>' +
+    '</div></div>';
+  } else if (F.step === 2){
+    body = '<div class="page-head"><div><h1 style="font-size:16px">Select screens to import</h1>' +
+      '<p>Pick the frames that should become Jira Stories. Multi-select.</p></div>' +
+      '<div class="actions"><span class="chip" style="background:var(--accent-soft);color:#4A40C7">' + F.sel.size + ' selected</span>' +
+      '<button class="btn primary" ' + (F.sel.size === 0 ? "disabled" : "") + ' onclick="figmaAnalyze()">✨ Analyze ' + F.sel.size + ' screens</button></div></div>' +
+      '<div class="screens">' + SCREENS.map(s =>
+        '<div class="screen ' + (F.sel.has(s.id) ? "on" : "") + '" onclick="figmaToggle(\'' + s.id + '\')">' +
+          '<span class="tick">✓</span><div class="thumb">' + screenSvg(s.id, 250) + '</div>' +
+          '<div class="cap">' + s.name + '</div></div>').join("") + '</div>';
+  } else if (F.step === 3){
+    body = F.specs
+      ? '<div class="page-head"><div><h1 style="font-size:16px">Screen analysis (' + F.specs.length + ')</h1>' +
+        '<p>Extracted by the Screen Analyst (vision model) — review before composing stories.</p></div>' +
+        '<div class="actions"><button class="btn primary" onclick="figmaCompose()">Compose ' + F.specs.length + ' Stories ➜</button></div></div>' +
+        F.specs.map(sp => '<div class="spec"><h4>' + esc(sp.title) + '</h4>' +
+          '<div class="muted" style="font-size:12.5px">' + sp.id + '</div>' +
+          '<div class="kv"><b>Elements:</b> ' + sp.elements.join(" · ") + '</div>' +
+          '<div class="kv"><b>Validations:</b> ' + sp.validations.join(" · ") + '</div>' +
+          '<div class="kv"><b>States:</b> ' + sp.states.join(" · ") + '</div></div>').join("")
+      : '<div class="center-state" id="fg-analyze"><div class="spin"></div><b>Analyzing ' + F.sel.size +
+        ' screens…</b>Simulated vision call — collecting frame renders + node text.</div>';
+  } else if (F.step === 4){
+    body = '<div class="page-head"><div><h1 style="font-size:16px">Compose stories (' + F.stories.length + ')</h1>' +
+      '<p>Edit anything before publishing. Each story keeps its Figma deep link.</p></div>' +
+      '<div class="actions"><button class="btn primary" onclick="figmaPublish(this)">Publish ' + F.stories.length +
+      ' Stories ➜</button></div></div>' +
+      F.stories.map((s, ix) => '<div class="story-card"><div class="sh">' +
+        '<div class="thumbsm">' + screenSvg(s.screenId, 74) + '</div>' +
+        '<span class="tg" style="border:1px solid #BFE8D0;background:#fff;color:#0C7A3E;border-radius:20px;font-size:11.5px;font-weight:700;padding:1px 9px">Story ' + (ix + 1) + '</span>' +
+        '<b style="flex:1">' + esc(s.title) + '</b>' +
+        '<select style="width:70px"><option>' + s.points + ' pts</option><option>1</option><option>2</option><option>3</option><option>5</option></select>' +
+        '<button class="icon-btn" onclick="toast(\'Inline editor\',\'(mock)\')">✎</button></div>' +
+        '<div class="sb"><div style="font-weight:650">' + esc(s.story) + '</div>' +
+        '<div class="muted" style="font-size:12px;margin-top:6px">⬚ Source: ' +
+          '<span class="mono">figma.com/file/SF-PAYOPS-Demo?node-id=' + s.screenId + '</span></div>' +
+        '<pre>' + esc(s.ac) + '</pre></div></div>').join("");
+  } else {
+    body = '<div class="center-state"><div style="font-size:34px">✅</div>' +
+      '<b>' + F.stories.length + ' Stories created in PAYOPS</b>' +
+      'Keys: ' + (F.publishedKeys || []).join(", ") +
+      '<div class="inline-note">Each issue has the screen thumbnail attached, the Figma deep link in its ' +
+      'description and the <span class="mk">ai-draft</span> label.</div>' +
+      '<div style="margin-top:16px"><button class="btn primary" onclick="figmaReset()">Start another import</button> ' +
+      '<button class="btn" onclick="go(\'stories\')">View in Stories ➜</button></div></div>';
+  }
+
+  const nav = F.step < 5 && F.step > 1
+    ? '<div style="display:flex;gap:9px;justify-content:flex-end;margin-top:16px">' +
+      (F.step > 2 ? '<button class="btn" onclick="F.step--;renderMain()">Back</button>' : '') + '</div>'
+    : "";
+
+  $("#main").innerHTML =
+    '<div class="page-head"><div><h1>Design Import</h1><p>Figma screens ➜ sprint-ready Jira Stories ' +
+    '(Gherkin AC + screenshots). <b>Stories only</b> in v1.</p></div></div>' +
+    stepsBar + body + nav;
+}
+function figmaToggle(id){
+  F.sel.has(id) ? F.sel.delete(id) : F.sel.add(id);
+  renderFigma();
+}
+async function figmaConnect(btn){
+  btn.disabled = true; btn.innerHTML = '<span class="spin sm"></span> Connecting…';
+  await sleep(900);
+  F.connected = true; F.step = 2;
+  renderFigma();
+  toast("Figma connected", "6 frames found in SF-PAYOPS-Demo", "ok");
+}
+async function figmaAnalyze(){
+  F.step = 3; renderFigma();
+  const picked = SCREENS.filter(s => F.sel.has(s.id));
+  F.specs = await MOCK_AI.analyzeScreens(picked);
+  renderFigma();
+  toast("Analysis complete", picked.length + " ScreenSpecs ready for review", "ok");
+}
+function figmaCompose(){
+  F.stories = MOCK_AI.composeStories(F.specs);
+  F.step = 4; renderFigma();
+}
+async function figmaPublish(btn){
+  btn.disabled = true; btn.innerHTML = '<span class="spin sm"></span> Creating in Jira…';
+  await sleep(1100);
+  const base = DB.stories.reduce((a, i) => Math.max(a, parseInt(i.key.split("-")[1], 10) || 0), 320);
+  F.publishedKeys = F.stories.map((_, ix) => "PAYOPS-" + (base + 1 + ix));
+  F.stories.forEach((s, ix) => DB.stories.unshift({
+    key:"PAYOPS-" + (base + 1 + ix), type:"Story", status:"Backlog", assignee:"Unassigned",
+    updated:"2026-11-06 09:30", score:5, before:null, marker:"ai-draft",
+    summary:s.story, fields:{ summary:s.story, description:"Screen: " + s.screenId, successCriteria:s.ac, value:"" }
+  }));
+  F.step = 5; renderFigma(); renderRail();
+  toast(F.stories.length + " Stories created in Jira", "thumbnails attached · Figma links embedded", "ok");
+}
+function figmaReset(){
+  F.step = 1; F.connected = false; F.sel.clear(); F.specs = null; F.stories = null;
+  renderFigma();
+}
+
+/* ==========================================================================
+   BOOTSTRAP
+   ========================================================================== */
+render();
+toast("Prototype ready", "Try: Epics → ⋮ → Polish with AI, or Design Import", "");
+</script>
+</body>
+</html>
