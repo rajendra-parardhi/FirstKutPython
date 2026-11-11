@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google AI Studio - Antigravity Agent</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #242121;
+      color: #e3e3e3;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Left Navigation Sidebar */
+    aside.sidebar {
+      width: 250px;
+      background-color: #272120;
+      border-right: 1px solid #383838;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      flex-shrink: 0;
+    }
+
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .brand-logo {
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, #4285f4, #9b51e0);
+      border-radius: 50%;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e3e3e3;
+    }
+
+    .nav-section {
+      margin-bottom: 20px;
+    }
+
+    .nav-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #8e8e8e;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: #c0c0c0;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s ease;
+    }
+
+    .nav-item:hover {
+      background-color: #383332;
+      color: #ffffff;
+    }
+
+    .nav-item.active {
+      background-color: #383332;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* Upgrade Box - ID 3 */
+    .upgrade-card {
+      margin-top: auto;
+      background-color: #292929;
+      border: 1px solid #3d3d3d;
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .upgrade-card h4 {
+      font-size: 13px;
+      color: #ffffff;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .upgrade-card p {
+      font-size: 11px;
+      color: #a0a0a0;
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+
+    .upgrade-btn {
+      width: 100%;
+      background-color: #4c4c4c;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .upgrade-btn:hover {
+      background-color: #5c5c5c;
+    }
+
+    /* Main Workspace */
+    main.workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #242121;
+    }
+
+    /* Top Notice Banner - ID 0 */
+    .top-banner {
+      background-color: #272120;
+      border-bottom: 1px solid #383838;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: #cccccc;
+    }
+
+    .top-banner a {
+      color: #64b5f6;
+      text-decoration: none;
+    }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background-color: #4e4e50;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 12px;
+      margin-left: auto;
+    }
+
+    .content-area {
+      flex: 1;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .agent-header {
+      margin-bottom: 20px;
+    }
+
+    .agent-title-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .agent-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .badge {
+      background: rgba(66, 133, 244, 0.15);
+      color: #64b5f6;
+      border: 1px solid #4285f4;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .agent-subtitle {
+      font-size: 13px;
+      color: #a0a0a0;
+    }
+
+    .env-card {
+      background-color: #1e1c1c;
+      border: 1px solid #333333;
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .env-info h5 {
+      font-size: 13px;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .env-info p {
+      font-size: 12px;
+      color: #888888;
+    }
+
+    .cap-btn {
+      background: transparent;
+      border: 1px solid #4c4c4c;
+      color: #ffffff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .cap-btn:hover {
+      background-color: #333;
+    }
+
+    /* Prompt Input Panel */
+    .prompt-container {
+      margin-top: auto;
+      background-color: #2d2d2d;
+      border: 1px solid #444444;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .prompt-textarea {
+      width: 100%;
+      height: 80px;
+      background: transparent;
+      border: none;
+      resize: none;
+      color: #ffffff;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .prompt-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid #3a3a3a;
+      padding-top: 8px;
+    }
+
+    .tool-icons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: #a0a0a0;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .icon-btn:hover {
+      color: #ffffff;
+    }
+
+    /* Container Run Button - ID 12 */
+    .run-btn {
+      height: 41px;
+      background-color: #4c4c4c;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 0 16px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .run-btn:hover {
+      background-color: #5c5c5c;
+    }
+
+    .run-shortcut {
+      color: #a0a0a0;
+      font-size: 11px;
+      font-weight: normal;
+    }
+
+    /* Right Settings Sidebar */
+    aside.config-panel {
+      width: 315px;
+      background-color: #272727;
+      border-left: 1px solid #383838;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex-shrink: 0;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    /* Cards in Right Panel - ID 4 & 2 */
+    .config-card {
+      background-color: #202020;
+      border: 1px solid #383838;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .config-label {
+      font-size: 11px;
+      color: #888888;
+      margin-bottom: 6px;
+    }
+
+    .model-selector {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .config-desc {
+      font-size: 12px;
+      color: #b0b0b0;
+      line-height: 1.4;
+    }
+
+    .system-input {
+      width: 100%;
+      height: 60px;
+      background: transparent;
+      border: none;
+      color: #ffffff;
+      font-size: 12px;
+      resize: none;
+      outline: none;
+    }
+
+    /* Toggle Switches - ID 7 & 9 */
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      color: #444445;
+      color: #e0e0e0;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 37px;
+      height: 22px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #262525;
+      border: 1px solid #444444;
+      transition: .3s;
+      border-radius: 22px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #4285f4;
+      border-color: #4285f4;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(15px);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Left Sidebar -->
+  <aside class="sidebar">
+    <div class="brand-header">
+      <div class="brand-logo"></div>
+      <span class="brand-title">Google AI Studio</span>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">BUILD</div>
+      <a href="#" class="nav-item active">✨ New app</a>
+      <a href="#" class="nav-item">▶️ Playground</a>
+      <a href="#" class="nav-item">📜 History</a>
+      <a href="#" class="nav-item">💬 Temporary chat</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">EXPLORE</div>
+      <a href="#" class="nav-item">📱 My apps</a>
+      <a href="#" class="nav-item">🖼️ Gallery</a>
+      <a href="#" class="nav-item">📄 Documentation</a>
+    </div>
+
+    <!-- Upgrade Component (ID: 3) -->
+    <div class="upgrade-card">
+      <h4>👑 Upgrade to unlock</h4>
+      <p>Access higher limits, Pro models, and extended code execution capacity.</p>
+      <button class="upgrade-btn">Upgrade Plan</button>
+    </div>
+  </aside>
+
+  <!-- Main Workspace -->
+  <main class="workspace">
+    <!-- Top Notice Banner (ID: 0) -->
+    <div class="top-banner">
+      <span>Temporary chat — Your conversation won't be saved automatically. <a href="#">See data use policy</a></span>
+      <div class="user-avatar">G</div>
+    </div>
+
+    <!-- Main Content Body -->
+    <div class="content-area">
+      <div class="agent-header">
+        <div class="agent-title-row">
+          <h1 class="agent-title">Antigravity Agent Preview</h1>
+          <span class="badge">API Link Available</span>
+        </div>
+        <p class="agent-subtitle">General-purpose autonomous agent running in a remote Google-hosted Linux environment.</p>
+      </div>
+
+      <div class="env-card">
+        <div class="env-info">
+          <h5>Isolated Code Execution Sandbox</h5>
+          <p>Spins up an isolated container where your agent can run code and manage filesystem assets.</p>
+        </div>
+        <button class="cap-btn">Set token cap</button>
+      </div>
+
+      <!-- Prompt Input Panel -->
+      <div class="prompt-container">
+        <textarea class="prompt-textarea" placeholder="Start typing a prompt to see what our agents can do..."></textarea>
+        <div class="prompt-actions">
+          <div class="tool-icons">
+            <button class="icon-btn" title="Attach file">📎</button>
+            <button class="icon-btn" title="Code execution">💻</button>
+            <button class="icon-btn" title="Google Grounding">🌐</button>
+          </div>
+          <!-- Action Container Button (ID: 12) -->
+          <button class="run-btn">
+            <span>▶ Run</span>
+            <span class="run-shortcut">Ctrl ↵</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Right Configuration Panel -->
+  <aside class="config-panel">
+    <div class="panel-title">Configuration</div>
+
+    <!-- Model Selection Card (ID: 4) -->
+    <div class="config-card">
+      <div class="config-label">Selected Model</div>
+      <div class="model-selector">
+        <span>Gemini 1.5 Flash</span>
+        <span>▼</span>
+      </div>
+      <p class="config-desc">Autonomous agent optimized for fast execution, browser tool usage, and code synthesis.</p>
+    </div>
+
+    <!-- System Instructions Card (ID: 2) -->
+    <div class="config-card">
+      <div class="config-label">System Instructions</div>
+      <textarea class="system-input" placeholder="Optional tone and style instructions for the model..."></textarea>
+    </div>
+
+    <!-- Capabilities / Tools Section (ID: 9 & 7) -->
+    <div>
+      <div class="panel-title" style="margin-bottom: 12px;">Tools</div>
+
+      <div class="toggle-row">
+        <span class="toggle-label">Filesystem tools</span>
+        <label class="switch">
+          <input type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <span class="toggle-label">Code execution</span>
+        <label class="switch">
+          <input type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <span class="toggle-label">Google Search Grounding</span>
+        <label class="switch">
+          <input type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+  </aside>
+
+</body>
+</html>

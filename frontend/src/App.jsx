@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
+import JSZip from "jszip";
 
 // Figma Workspace Specific Imports
 import { FigmaPreview } from "./components/FigmaPreview";
@@ -11,8 +12,33 @@ import { API, apiHeaders, pollJob, saveApiUrl } from "./config";
 const EXAMPLE_FILE_KEY = "8VV8hCa7NJjw68b6dykdXN";
 
 function App() {
-  // Navigation State
-  const [workspace, setWorkspace] = useState("screenshot"); // "screenshot" or "figma"
+  // Navigation State: "image", "figma", or "jira"
+  const [workspace, setWorkspace] = useState("image");
+  const [isConnectorsOpen, setIsConnectorsOpen] = useState(false);
+  const connectorsDropdownRef = useRef(null);
+
+  // Dropdown states for Image to Code Output Panel
+  const [isAnalysisDropdownOpen, setIsAnalysisDropdownOpen] = useState(false);
+  const [isCodeDropdownOpen, setIsCodeDropdownOpen] = useState(false);
+  const analysisDropdownRef = useRef(null);
+  const codeDropdownRef = useRef(null);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (connectorsDropdownRef.current && !connectorsDropdownRef.current.contains(event.target)) {
+        setIsConnectorsOpen(false);
+      }
+      if (analysisDropdownRef.current && !analysisDropdownRef.current.contains(event.target)) {
+        setIsAnalysisDropdownOpen(false);
+      }
+      if (codeDropdownRef.current && !codeDropdownRef.current.contains(event.target)) {
+        setIsCodeDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Backend URL override (runtime; health-checked before saving)
   const [apiEditing, setApiEditing] = useState(false);
@@ -33,16 +59,28 @@ function App() {
   };
 
   // ==========================================
-  // WORKSPACE A: SCREENSHOT TO CODE STATES
+  // WORKSPACE A: SCREENSHOT / IMAGE TO CODE STATES
   // ==========================================
   const [selectedFile, setSelectedFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isUiLoading, setIsUiLoading] = useState(false);
-  const [isIngesting, setIsIngesting] = useState(false);
-  const [activeUiTab, setActiveUiTab] = useState("sam"); // sam, ocr, colors, similarity, json, flutter, html
-  const [uiStatus, setUiStatus] = useState("System Ready. Please upload a UI layout screenshot to begin.");
-  const [uiPerformanceMetrics, setUiPerformanceMetrics] = useState(null); 
-  
+
+  // ZIP Ingestion & Selection Modal States
+  const [zipFileName, setZipFileName] = useState("");
+  const [zipImages, setZipImages] = useState([]); // [{ name, path, file, previewUrl, dimensions, sizeFormatted }]
+  const [isZipModalOpen, setIsZipModalOpen] = useState(false);
+  const [isUnzipping, setIsUnzipping] = useState(false);
+  const [zipSearchQuery, setZipSearchQuery] = useState("");
+ 
+  // Output Main Tabs & Sub-Tabs
+  const [activeUiTab, setActiveUiTab] = useState("analysis"); // "analysis" | "generated_code"
+  const [activeAnalysisSubTab, setActiveAnalysisSubTab] = useState("sam"); // "sam" | "ocr" | "colors" | "json" | "similarity"
+  const [activeCodeSubTab, setActiveCodeSubTab] = useState("html"); // "html" | "flutter"
+  const [isSideBySidePreview, setIsSideBySidePreview] = useState(true); // Toggle Code + Live Preview split
+ 
+  const [uiStatus, setUiStatus] = useState("System Ready. Please upload a UI layout image or a .zip archive to begin.");
+  const [uiPerformanceMetrics, setUiPerformanceMetrics] = useState(null);
+ 
   // Model Engine & Elaborate Telemetry State + Popup Modal Control
   const [selectedModelEngine, setSelectedModelEngine] = useState("gemini-3.5-flash");
   const [modelSelectionReason, setModelSelectionReason] = useState(
@@ -72,10 +110,55 @@ function App() {
   const [uiJsonOutput, setUiJsonOutput] = useState("");
   const [uiFlutterOutput, setUiFlutterOutput] = useState("");
   const [uiHtmlOutput, setUiHtmlOutput] = useState("");
-  
+ 
   // Visual alignment validation metrics
   const [htmlRenderPreview, setHtmlRenderPreview] = useState("");
   const [clipSimilarity, setClipSimilarity] = useState(null);
+
+  // Helper Labels for active tabs
+  const analysisSubTabNames = {
+    sam: "1. UI Elements",
+    ocr: "2. Extracted Text",
+    colors: "3. Color Palette",
+    json: "4. UI Structure",
+    similarity: "5. Accuracy Check"
+  };
+
+  // Helper: Format bytes to human readable string
+  const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  };
+
+  // Helper: Load image dimensions asynchronously
+  const getImageDimensions = (url) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(`${img.naturalWidth} × ${img.naturalHeight}px`);
+      img.onerror = () => resolve("Unknown dim");
+      img.src = url;
+    });
+  };
+
+  // Helper: Reset pipeline outputs on new image selection
+  const resetPipelineOutputs = () => {
+    setSamPreview("");
+    setOcrOutput(null);
+    setColorsOutput([]);
+    setSimilarityOutput("");
+    setUiJsonOutput("");
+    setUiFlutterOutput("");
+    setUiHtmlOutput("");
+    setHtmlRenderPreview("");
+    setClipSimilarity(null);
+    setUiPerformanceMetrics(null);
+    setLiveSteps([]);
+    setIrEvaluationResult(null);
+    setIsMatchModalOpen(false);
+  };
 
   // ==========================================
   // WORKSPACE B: FIGMA TO CODE STATES
@@ -110,45 +193,7 @@ function App() {
     return figmaPages.find((page) => page.id === activeFigmaPageId) || figmaPages[0];
   }, [figmaPages, activeFigmaPageId]);
 
-  // Bulk folder ingest with automatic IR re-evaluation trigger
-  const handleBulkIngest = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    setIsIngesting(true);
-    setUiStatus("Staging folder for ingestion...");
-    const formData = new FormData();
-    for (let i = 0; i < files.length; i++) { formData.append("files", files[i]); }
-    try {
-      const res = await axios.post(`${API}/api/ingest_folder`, formData, {
-        headers: apiHeaders({ "Content-Type": "multipart/form-data" }),
-        timeout: 120000,
-      });
-
-      const job = await pollJob(res.data.job_id, (snapshot) => {
-        if (snapshot.progress) setIngestProgress(snapshot.progress);
-        if (snapshot.stage) setUiStatus(snapshot.stage);
-      });
-
-      const details = (job.result && job.result.details) || {};
-      const errorCount = (details.errors || []).length;
-      setUiStatus(`Ingestion complete: ${details.processed || 0} images indexed.`);
-      alert(`Ingestion Complete! Processed: ${details.processed || 0} images.${errorCount ? ` Errors: ${errorCount}` : ""}`);
-      
-      // Auto-rerun retrieval if an image request is active
-      if (selectedFile) {
-        handleIngestionCompleteAutoRerun();
-      }
-    } catch (err) {
-      console.error(err);
-      setUiStatus("Folder ingestion failed.");
-      alert(`Error during folder ingestion: ${err.response?.data?.detail || err.message}`);
-    } finally {
-      setIsIngesting(false);
-      e.target.value = "";
-    }
-  };
-
-  // KB File Upload with automatic IR re-evaluation trigger (supports ZIP, DOC, and local SQL/DB)
+  // KB File Upload with automatic IR re-evaluation trigger
   const handleKbFileUpload = async (event, endpoint) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -174,7 +219,7 @@ function App() {
       });
       const result = job.result || {};
       const details = result.details || {};
-      
+     
       let message = "";
       if (endpoint === "ingest_zip") {
         message = `Indexed ${details.processed || 0} images${details.errors?.length ? `; ${details.errors.length} failed` : ""}.`;
@@ -186,7 +231,6 @@ function App() {
 
       setKbMessage({ type: "success", text: `${message} Auto-rerunning IR retrieval on your request...` });
 
-      // Automatically rerun IR retrieval against original active request
       if (selectedFile) {
         setTimeout(handleIngestionCompleteAutoRerun, 800);
       }
@@ -242,31 +286,115 @@ function App() {
   }, [figmaPages]);
 
   // ==========================================
-  // WORKSPACE A: SCREENSHOT PIPELINE LOGIC
+  // WORKSPACE A: SCREENSHOT & ZIP PIPELINE LOGIC
   // ==========================================
-  const handleUiFileChange = (e) => {
+  const handleUiFileChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (!file) return;
+
+    const lowerName = file.name.toLowerCase();
+    const isZip = lowerName.endsWith(".zip") || file.type === "application/zip" || file.type === "application/x-zip-compressed";
+
+    // ----------------------------------------------------
+    // CASE A: User selected a .ZIP archive
+    // ----------------------------------------------------
+    if (isZip) {
+      setZipFileName(file.name);
+      setIsUnzipping(true);
+      setZipImages([]);
+      setZipSearchQuery("");
+      setUiStatus(`Unpacking ZIP archive "${file.name}" in background...`);
+
+      try {
+        const zip = new JSZip();
+        const contents = await zip.loadAsync(file);
+        const extracted = [];
+        const supportedExtensions = [".png", ".jpg", ".jpeg", ".webp", ".svg", ".bmp"];
+
+        for (const [relativePath, zipEntry] of Object.entries(contents.files)) {
+          // 1. Skip directories
+          if (zipEntry.dir) continue;
+
+          // 2. Filter out OS hidden files and metadata (__MACOSX, .DS_Store, .* files)
+          const fileName = relativePath.split("/").pop() || "";
+          if (
+            relativePath.includes("__MACOSX") ||
+            fileName.startsWith(".") ||
+            fileName.toLowerCase() === "thumbs.db"
+          ) {
+            continue;
+          }
+
+          // 3. Match image extensions
+          const entryLower = fileName.toLowerCase();
+          const hasImageExt = supportedExtensions.some((ext) => entryLower.endsWith(ext));
+
+          if (hasImageExt) {
+            const blob = await zipEntry.async("blob");
+           
+            // Detect MIME type
+            let mimeType = "image/png";
+            if (entryLower.endsWith(".jpg") || entryLower.endsWith(".jpeg")) mimeType = "image/jpeg";
+            else if (entryLower.endsWith(".webp")) mimeType = "image/webp";
+            else if (entryLower.endsWith(".svg")) mimeType = "image/svg+xml";
+            else if (entryLower.endsWith(".bmp")) mimeType = "image/bmp";
+
+            const previewUrl = URL.createObjectURL(blob);
+            const dimensions = await getImageDimensions(previewUrl);
+            const imgFile = new File([blob], fileName, { type: mimeType });
+
+            extracted.push({
+              name: fileName,
+              path: relativePath,
+              file: imgFile,
+              previewUrl,
+              dimensions,
+              sizeBytes: blob.size,
+              sizeFormatted: formatFileSize(blob.size),
+            });
+          }
+        }
+
+        if (extracted.length === 0) {
+          setUiStatus("Warning: No valid image files (.png, .jpg, .webp, .svg) found in the selected ZIP archive.");
+          alert("No valid images (.png, .jpg, .webp, .svg) were detected inside this zip archive.");
+        } else {
+          setZipImages(extracted);
+          setIsZipModalOpen(true);
+          setUiStatus(`Loaded ${extracted.length} screens from "${file.name}". Please pick an image.`);
+        }
+      } catch (err) {
+        console.error("Failed to unpack zip:", err);
+        setUiStatus("Error: Unable to unpack ZIP folder. Please ensure file is valid.");
+        alert("Failed to unpack ZIP archive. Please verify the archive is not corrupted.");
+      } finally {
+        setIsUnzipping(false);
+        e.target.value = ""; // Reset input so same file can be picked again if desired
+      }
+      return;
+    }
+
+    // ----------------------------------------------------
+    // CASE B: User selected a single image (.png, .jpg, etc.)
+    // ----------------------------------------------------
+    if (file.type.startsWith("image/")) {
       setSelectedFile(file);
       setImagePreview(URL.createObjectURL(file));
-      setSamPreview("");
-      setOcrOutput(null);
-      setColorsOutput([]);
-      setSimilarityOutput("");
-      setUiJsonOutput("");
-      setUiFlutterOutput("");
-      setUiHtmlOutput("");
-      setHtmlRenderPreview("");
-      setClipSimilarity(null);
-      setUiPerformanceMetrics(null);
-      setLiveSteps([]);
-      setIrEvaluationResult(null);
-      setIsMatchModalOpen(false);
-      setUiStatus("New image loaded. Click 'Run Code Engine Pipeline' to evaluate.");
+      resetPipelineOutputs();
+      setUiStatus(`Loaded "${file.name}". Click 'Run Code Engine Pipeline' to evaluate.`);
+      e.target.value = "";
     }
   };
 
-  // Pipeline execution method supporting IR Evaluation and Direct AI generation
+  // Called when user clicks an image card in the Zip Selection Modal
+  const handleSelectImageFromZip = (imageItem) => {
+    setSelectedFile(imageItem.file);
+    setImagePreview(imageItem.previewUrl);
+    resetPipelineOutputs();
+    setIsZipModalOpen(false);
+    setUiStatus(`Selected "${imageItem.name}" from zip (${imageItem.dimensions}, ${imageItem.sizeFormatted}). Ready to run.`);
+  };
+
   const handleProcessUiPipeline = async (forceAi = false) => {
     if (!selectedFile) return;
     setIsUiLoading(true);
@@ -274,12 +402,12 @@ function App() {
     setUiStatus(forceAi ? "Synthesizing code layout with AI Orchestration..." : "Evaluating IR Retrieval against Knowledge Repo...");
 
     const initialSteps = [
-      { id: 1, name: "Layout Segmentation (SAM)", status: "processing", duration: null },
-      { id: 2, name: "Text Extraction (OCR)", status: "waiting", duration: null },
-      { id: 3, name: "Element Color Profiling", status: "waiting", duration: null },
-      { id: 4, name: "IR Verification & Alignment", status: "waiting", duration: null },
+      { id: 1, name: "Element Detection", status: "processing", duration: null },
+      { id: 2, name: "Text Extraction", status: "waiting", duration: null },
+      { id: 3, name: "Color Palette Extraction", status: "waiting", duration: null },
+      { id: 4, name: "Accuracy & Knowledge Verification", status: "waiting", duration: null },
       { id: 5, name: "Intelligent Synthesis Orchestration", status: "waiting", duration: null },
-      { id: 6, name: "Visual Alignment Check (CLIP)", status: "waiting", duration: null },
+      { id: 6, name: "Visual Alignment Check", status: "waiting", duration: null },
       { id: 7, name: "Codebase Promotion Governance", status: "waiting", duration: null },
     ];
     setLiveSteps(initialSteps);
@@ -310,8 +438,8 @@ function App() {
       });
 
       const result = job.result || {};
-      
-      // 1. POPULATE ALL TAB OUTPUTS IMMEDIATELY
+     
+      // Populate Tab Outputs
       if (result.sam_preview) setSamPreview(`data:image/png;base64,${result.sam_preview}`);
       if (result.json || result.ui_json) setUiJsonOutput(result.json || result.ui_json);
 
@@ -322,7 +450,6 @@ function App() {
       setUiHtmlOutput(result.html || result.html_code || result.html_css || result.htmlCssOutput || "");
       setSimilarityOutput(result.similarity || result.similarity_logs || result.similarityLogs || "Analysis complete.");
 
-      // 2. Visual previews & CLIP scores
       if (result.html_render_preview) {
         setHtmlRenderPreview(`data:image/png;base64,${result.html_render_preview}`);
       }
@@ -333,7 +460,6 @@ function App() {
         setModelSelectionReason(result.model_reason || "Automated multi-modal routing determined by synthesis orchestrator.");
       }
 
-      // 3. Set IR Engine Telemetry Data
       const matchStatus = result.ir_match_status || "NO_MATCH";
       setIrEvaluationResult({
         status: matchStatus,
@@ -342,10 +468,9 @@ function App() {
         unresolved: result.unresolved_requirements || [],
       });
 
-      // 4. Show non-blocking popup if IR coverage is insufficient and not forced
       if (!forceAi && (matchStatus === "PARTIAL_MATCH" || matchStatus === "NO_MATCH")) {
         setIsMatchModalOpen(true);
-        setUiStatus(`IR Engine Flagged: ${matchStatus}. Review outputs or enrich repository.`);
+        setUiStatus(`Accuracy Engine Flagged: ${matchStatus}. Review outputs or enrich repository.`);
       } else {
         setUiStatus(result.status || "Pipeline Execution Completed");
       }
@@ -380,24 +505,38 @@ function App() {
     }
   };
 
-  // Popup Action 1: User selects Yes -> Open Knowledge Repo Console
   const handleDecisionEnrichRepo = () => {
     setIsMatchModalOpen(false);
     setIsKnowledgeBaseOpen(true);
   };
 
-  // Popup Action 2: User selects No -> Continue with AI Orchestration
   const handleDecisionContinueAi = () => {
     setIsMatchModalOpen(false);
     handleProcessUiPipeline(true);
   };
 
-  // Auto-rerun retrieval against original request after indexing
   const handleIngestionCompleteAutoRerun = () => {
     setIsKnowledgeBaseOpen(false);
-    setUiStatus("Knowledge Repo enriched. Automatically rerunning IR retrieval on original request...");
+    setUiStatus("Knowledge Repo enriched. Automatically rerunning retrieval on original request...");
     handleProcessUiPipeline(false);
   };
+
+  const openInDartPad = () => {
+    if (!uiFlutterOutput) return;
+    const dartpadWindow = window.open("https://dartpad.dev/embed-flutter.html", "_blank");
+    if (dartpadWindow) {
+      setTimeout(() => {
+        dartpadWindow.postMessage({ source: uiFlutterOutput, type: "sourceCode" }, "*");
+      }, 2500);
+    }
+  };
+
+  // Filtered zip images list based on search query
+  const filteredZipImages = useMemo(() => {
+    if (!zipSearchQuery.trim()) return zipImages;
+    const q = zipSearchQuery.toLowerCase();
+    return zipImages.filter((img) => img.name.toLowerCase().includes(q));
+  }, [zipImages, zipSearchQuery]);
 
   // ==========================================
   // WORKSPACE B: FIGMA PIPELINE LOGIC
@@ -575,12 +714,24 @@ function App() {
     }
   };
 
-  const [ingestProgress, setIngestProgress] = useState({ current_file: "", processed: 0, total: 0 });
-
   const copyToClipboard = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     alert("Copied successfully.");
+  };
+
+  const getActiveConnectorLabel = () => {
+    switch (workspace) {
+      case "image":
+      case "screenshot":
+        return " Image";
+      case "figma":
+        return " Figma";
+      case "jira":
+        return " Jira";
+      default:
+        return "Connectors";
+    }
   };
 
   return (
@@ -591,21 +742,135 @@ function App() {
           <span className="logo-rocket"></span>
           <h1>UI Image Parser</h1>
         </div>
-        
-        {/* Navigation Selector */}
-        <div className="workspace-toggle-bar">
-          <button 
-            className={`toggle-btn ${workspace === "screenshot" ? "active" : ""}`}
-            onClick={() => setWorkspace("screenshot")}
+       
+        {/* Navigation Selector: Connectors Dropdown */}
+        <div
+          className="connectors-dropdown-wrapper"
+          ref={connectorsDropdownRef}
+          style={{ position: "relative" }}
+        >
+          <button
+            type="button"
+            className="connectors-dropdown-trigger"
+            onClick={() => setIsConnectorsOpen((prev) => !prev)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              padding: "8px 16px",
+              background: "linear-gradient(135deg, #1e293b, #0f172a)",
+              border: "1px solid #38bdf8",
+              borderRadius: "6px",
+              color: "#f8fafc",
+              fontSize: "13px",
+              fontWeight: "600",
+              cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.35)",
+              transition: "all 0.2s ease"
+            }}
           >
-             Upload Files & IR Engine
+            <span style={{ color: "#38bdf8" }}></span>
+            <span>Connectors: <strong>{getActiveConnectorLabel()}</strong></span>
+            <span style={{ fontSize: "10px", color: "#38bdf8", marginLeft: "4px" }}>
+              {isConnectorsOpen ? "▲" : "▼"}
+            </span>
           </button>
-          <button 
-            className={`toggle-btn ${workspace === "figma" ? "active" : ""}`}
-            onClick={() => setWorkspace("figma")}
-          >
-             Figma Compiler Workspace
-          </button>
+
+          {isConnectorsOpen && (
+            <div
+              className="connectors-dropdown-menu"
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                left: 0,
+                background: "#0f172a",
+                border: "1px solid #334155",
+                borderRadius: "8px",
+                padding: "6px",
+                minWidth: "190px",
+                boxShadow: "0 12px 30px rgba(0, 0, 0, 0.65)",
+                zIndex: 1000,
+                display: "flex",
+                flexDirection: "column",
+                gap: "4px"
+              }}
+            >
+              {/* Option 1: Image */}
+              <button
+                type="button"
+                onClick={() => {
+                  setWorkspace("image");
+                  setIsConnectorsOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "9px 12px",
+                  borderRadius: "5px",
+                  border: "none",
+                  background: workspace === "image" || workspace === "screenshot" ? "#1e293b" : "transparent",
+                  color: workspace === "image" || workspace === "screenshot" ? "#38bdf8" : "#cbd5e1",
+                  fontSize: "13px",
+                  fontWeight: workspace === "image" || workspace === "screenshot" ? "700" : "500",
+                  textAlign: "left",
+                  cursor: "pointer"
+                }}
+              >
+                <span></span> Image
+              </button>
+
+              {/* Option 2: Figma */}
+              <button
+                type="button"
+                onClick={() => {
+                  setWorkspace("figma");
+                  setIsConnectorsOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "9px 12px",
+                  borderRadius: "5px",
+                  border: "none",
+                  background: workspace === "figma" ? "#1e293b" : "transparent",
+                  color: workspace === "figma" ? "#38bdf8" : "#cbd5e1",
+                  fontSize: "13px",
+                  fontWeight: workspace === "figma" ? "700" : "500",
+                  textAlign: "left",
+                  cursor: "pointer"
+                }}
+              >
+                <span></span> Figma
+              </button>
+
+              {/* Option 3: Jira */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsConnectorsOpen(false);
+                  window.open("/typ.html", "_blank"); 
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "9px 12px",
+                  borderRadius: "5px",
+                  border: "none",
+                  background: workspace === "jira" ? "#1e293b" : "transparent",
+                  color: workspace === "jira" ? "#38bdf8" : "#cbd5e1",
+                  fontSize: "13px",
+                  fontWeight: workspace === "jira" ? "700" : "500",
+                  textAlign: "left",
+                  cursor: "pointer"
+                }}
+              >
+                <span></span> Jira
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="connection-status">
@@ -646,20 +911,22 @@ function App() {
         </div>
       </header>
 
-      {/* WORKSPACE 1: SCREENSHOT TO CODE RAG PIPELINE */}
-      {workspace === "screenshot" && (
+      {/* =======================================================
+          WORKSPACE 1: IMAGE (SCREENSHOT) TO CODE PIPELINE
+          ======================================================= */}
+      {(workspace === "image" || workspace === "screenshot") && (
         <main className="workspace-grid" style={{ gridTemplateColumns: "420px 1fr" }}>
-          
+         
           {/* LEFT CONTROL PANEL */}
           <section className="panel control-panel" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
             <div className="panel-header" style={{ flexShrink: 0 }}>
               <h2>Source UI Control Panel</h2>
             </div>
-            
+           
             {/* Scrollable Container Body Wrapper */}
-            <div className="panel-body" style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
-              
-              {/* PROACTIVE KNOWLEDGE REPO BUTTON */}
+            <div className="panel-body" style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "14px" }}>
+             
+              {/* KNOWLEDGE REPO BUTTON */}
               <button
                 onClick={() => setIsKnowledgeBaseOpen(true)}
                 style={{
@@ -680,45 +947,44 @@ function App() {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span>📚</span>
-                  <span>Build / Update Knowledge Repo</span>
+                  <span></span>
+                  <span>Knowledge Base</span>
                 </div>
-                <span style={{ 
-                  background: uiJsonOutput ? "#10b98125" : "#64748b25", 
-                  color: uiJsonOutput ? "#34d399" : "#94a3b8", 
+                <span style={{
+                  background: uiJsonOutput ? "#10b98125" : "#64748b25",
+                  color: uiJsonOutput ? "#34d399" : "#94a3b8",
                   border: `1px solid ${uiJsonOutput ? "#10b981" : "#475569"}`,
-                  padding: "2px 6px", 
-                  borderRadius: "4px", 
-                  fontSize: "10px" 
+                  padding: "2px 6px",
+                  borderRadius: "4px",
+                  fontSize: "10px"
                 }}>
-                  {uiJsonOutput ? "Ready" : "Enrich"}
+                  {uiJsonOutput ? "Ready" : "Update"}
                 </span>
               </button>
 
               {/* Terminal Log Container */}
-              <div 
-                className="terminal-log" 
-                style={{ 
-                  display: "flex", 
-                  flexDirection: "column", 
-                  height: "330px", 
-                  border: "1px solid #334155", 
-                  borderRadius: "8px", 
-                  backgroundColor: "#0b1329", 
+              <div
+                className="terminal-log"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "350px",
+                  border: "1px solid #334155",
+                  borderRadius: "8px",
+                  backgroundColor: "#0b1329",
                   boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)",
                   overflow: "hidden",
                   flexShrink: 0
                 }}
               >
-                {/* Fixed Top Header */}
-                <div 
-                  className="terminal-header" 
-                  style={{ 
-                    display: "flex", 
-                    alignItems: "center", 
+                <div
+                  className="terminal-header"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "10px 14px", 
-                    backgroundColor: "#1e293b", 
+                    padding: "10px 14px",
+                    backgroundColor: "#1e293b",
                     borderBottom: "1px solid #334155",
                     flexShrink: 0
                   }}
@@ -732,27 +998,26 @@ function App() {
                     </span>
                   </div>
 
-                  <span style={{ 
-                    fontSize: "9px", 
-                    background: "#0284c7", 
-                    color: "#ffffff", 
-                    padding: "2px 7px", 
-                    borderRadius: "4px", 
-                    fontWeight: "600", 
-                    fontFamily: "monospace" 
+                  <span style={{
+                    fontSize: "9px",
+                    background: "#0284c7",
+                    color: "#ffffff",
+                    padding: "2px 7px",
+                    borderRadius: "4px",
+                    fontWeight: "600",
+                    fontFamily: "monospace"
                   }}>
                     LIVE STREAM
                   </span>
                 </div>
 
-                {/* Scrollable Container Body */}
-                <div 
-                  className="terminal-body" 
-                  style={{ 
-                    flex: 1, 
-                    overflowY: "auto", 
-                    padding: "12px 14px", 
-                    fontFamily: "monospace", 
+                <div
+                  className="terminal-body"
+                  style={{
+                    flex: 1,
+                    overflowY: "auto",
+                    padding: "12px 14px",
+                    fontFamily: "monospace",
                     lineHeight: "1.45"
                   }}
                 >
@@ -762,18 +1027,17 @@ function App() {
                       {uiStatus}
                     </p>
                   </div>
-                  
-                  {/* Step Logs */}
+                 
                   {liveSteps.length > 0 && (
                     <div className="metrics-profiler" style={{ borderTop: "1px solid #1e293b", paddingTop: "8px" }}>
                       <div style={{ color: "#94a3b8", fontSize: "10px", marginBottom: "8px", letterSpacing: "0.6px", fontWeight: "bold" }}>
                         PIPELINE EXECUTION STAGES:
                       </div>
-                      
+                     
                       {liveSteps.map((step) => {
                         let stepColor = "#64748b";
                         let statusMarker = "waiting";
-                        
+                       
                         if (step.status === "completed") {
                           stepColor = "#34d399";
                           statusMarker = `✓ ${step.duration}`;
@@ -786,13 +1050,13 @@ function App() {
                         }
 
                         return (
-                          <div 
-                            key={step.id} 
-                            style={{ 
-                              display: "flex", 
-                              justifyContent: "space-between", 
-                              fontSize: "11px", 
-                              margin: "5px 0", 
+                          <div
+                            key={step.id}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              fontSize: "11px",
+                              margin: "5px 0",
                               color: stepColor
                             }}
                           >
@@ -802,13 +1066,13 @@ function App() {
                         );
                       })}
 
-                      {/* SYSTEM ENGINE BAR WITH ELABORATED TELEMETRY */}
-                      <div 
-                        style={{ 
-                          marginTop: "12px", 
-                          padding: "10px", 
-                          backgroundColor: "#111c38", 
-                          borderRadius: "6px", 
+                      {/* SYSTEM ENGINE BAR */}
+                      <div
+                        style={{
+                          marginTop: "12px",
+                          padding: "10px",
+                          backgroundColor: "#111c38",
+                          borderRadius: "6px",
                           border: "1px solid #1e293b",
                           display: "flex",
                           flexDirection: "column",
@@ -817,21 +1081,21 @@ function App() {
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span style={{ color: "#94a3b8", fontSize: "10.5px", fontWeight: "bold" }}>SYNTHESIS ENGINE:</span>
-                          
+                         
                           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span style={{ 
-                              color: "#38bdf8", 
-                              backgroundColor: "#0369a120", 
+                            <span style={{
+                              color: "#38bdf8",
+                              backgroundColor: "#0369a120",
                               border: "1px solid #0284c7",
                               padding: "2px 8px",
                               borderRadius: "4px",
-                              fontWeight: "bold", 
-                              fontSize: "11px", 
-                              fontFamily: "monospace" 
+                              fontWeight: "bold",
+                              fontSize: "11px",
+                              fontFamily: "monospace"
                             }}>
                               {selectedModelEngine}
                             </span>
-                            
+                           
                             <button
                               onClick={() => setIsEngineModalOpen(true)}
                               style={{
@@ -846,7 +1110,7 @@ function App() {
                               }}
                               title="Click to view full Engine details"
                             >
-                              🔍 View Engine Details
+                               View Engine Details
                             </button>
                           </div>
                         </div>
@@ -860,34 +1124,16 @@ function App() {
                           </p>
                         </div>
                       </div>
-                      
-                      {isIngesting && (
-                        <div className="ingestion-overlay" style={{ marginTop: "10px", padding: "10px", border: "1px dashed #475569", borderRadius: "4px" }}>
-                          <div className="progress-card">
-                            <span style={{ color: "#38bdf8", fontSize: "11px" }}>Processing Folder...</span>
-                            <div style={{ fontSize: "10px", color: "#94a3b8" }}>
-                              Current File: <strong>{ingestProgress.current_file}</strong>
-                            </div>
-                            <div className="progress-bar-bg" style={{ width: "100%", height: "4px", background: "#334155", borderRadius: "2px", margin: "4px 0" }}>
-                              <div 
-                                className="progress-bar-fill" 
-                                style={{ width: `${(ingestProgress.processed / (ingestProgress.total || 1)) * 100}%`, height: "4px", background: "#10b981", borderRadius: "2px" }}
-                              ></div>
-                            </div>
-                            <span style={{ fontSize: "10px", color: "#94a3b8" }}>{ingestProgress.processed} / {ingestProgress.total} processed.</span>
-                          </div>
-                        </div>
-                      )}
 
                       {uiPerformanceMetrics && !isUiLoading && (
-                        <div 
-                          style={{ 
-                            display: "flex", 
-                            justifyContent: "space-between", 
-                            fontSize: "11px", 
-                            margin: "10px 0 0 0", 
-                            borderTop: "1px dashed #334155", 
-                            paddingTop: "8px", 
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "11px",
+                            margin: "10px 0 0 0",
+                            borderTop: "1px dashed #334155",
+                            paddingTop: "8px",
                             fontWeight: "bold",
                             color: "#60a5fa"
                           }}
@@ -901,291 +1147,761 @@ function App() {
                 </div>
               </div>
 
-              <div className="upload-wrapper" style={{ flexShrink: 0 }}>
-                <label className="file-upload-label">
-                  <input type="file" accept="image/*" onChange={handleUiFileChange} />
+              {/* DUAL FILE UPLOAD: SINGLE IMAGE OR .ZIP ARCHIVE */}
+              <div className="upload-wrapper" style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label className="file-upload-label" style={{ opacity: isUnzipping ? 0.7 : 1 }}>
+                  <input
+                    type="file"
+                    accept="image/*,.zip,application/zip,application/x-zip-compressed"
+                    disabled={isUnzipping || isUiLoading}
+                    onChange={handleUiFileChange}
+                  />
                   <div className="upload-box-content">
-                    <span className="upload-icon">📁</span>
-                    <span>Click to Upload UI Screenshot</span>
+                    <span className="upload-icon">{isUnzipping ? "⏳" : "📁"}</span>
+                    <span>
+                      {isUnzipping ? "Unpacking ZIP Archive..." : "Input"}
+                    </span>
                   </div>
                 </label>
+
+                {/* If a zip file was previously loaded, show quick re-open button */}
+                {zipImages.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsZipModalOpen(true)}
+                    style={{
+                      background: "#1e293b",
+                      border: "1px dashed #38bdf8",
+                      borderRadius: "6px",
+                      color: "#38bdf8",
+                      fontSize: "11.5px",
+                      fontWeight: "600",
+                      padding: "7px 10px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px"
+                    }}
+                  >
+                    <span></span>
+                    <span>Browse Loaded ZIP Screens ({zipImages.length})</span>
+                  </button>
+                )}
               </div>
 
               {imagePreview && (
                 <div className="source-preview-container" style={{ flexShrink: 0 }}>
-                  <h4>Uploaded Input Image:</h4>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <h4 style={{ margin: 0 }}>Uploaded Input Image:</h4>
+                    {selectedFile && (
+                      <span style={{ fontSize: "10.5px", color: "#38bdf8", fontWeight: "600" }}>
+                        {formatFileSize(selectedFile.size)}
+                      </span>
+                    )}
+                  </div>
                   <img src={imagePreview} alt="Uploaded interface" className="source-img" style={{ maxHeight: "220px", objectFit: "contain" }} />
+                  {selectedFile && (
+                    <span style={{ fontSize: "11px", color: "#94a3b8", display: "block", marginTop: "4px", textAlign: "center", wordBreak: "break-all" }}>
+                      📄 {selectedFile.name}
+                    </span>
+                  )}
                 </div>
               )}
 
               <button
                 onClick={() => handleProcessUiPipeline(false)}
-                disabled={isUiLoading || !selectedFile}
+                disabled={isUiLoading || !selectedFile || isUnzipping}
                 className={`process-button ${isUiLoading ? "btn-loading" : ""}`}
-                style={{ flexShrink: 0 }}
+                style={{ flexShrink: 0, marginTop: "8px" }}
               >
                 {isUiLoading ? "Running Pipeline Engine..." : "Run Code Engine Pipeline"}
               </button>
 
-              <div style={{ borderTop: "1px solid #334155", paddingTop: "15px", flexShrink: 0 }}>
-                <label style={{ cursor: "pointer", background: "#1e293b", padding: "10px", display: "block", textAlign: "center", borderRadius: "6px", color: "white" }}>
-                  <input type="file" multiple="multiple" webkitdirectory="true" directory="true" onChange={handleBulkIngest} style={{ display: "none" }} />
-                  📂 {isIngesting ? "Ingesting Folder..." : "Bulk Ingest UI Folder"}
-                </label>
-              </div>
             </div>
           </section>
 
           {/* Right Tabbed Output Panel */}
-          <section className="panel output-panel">
-            <div className="tabs-header">
-              <button className={`tab-btn ${activeUiTab === "sam" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("sam")}> SAM Segmentation</button>
-              <button className={`tab-btn ${activeUiTab === "ocr" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("ocr")}>OCR Text</button>
-              <button className={`tab-btn ${activeUiTab === "colors" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("colors")}> Colors</button>
-              <button className={`tab-btn ${activeUiTab === "similarity" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("similarity")}> Similarity & IR</button>
-              <button className={`tab-btn ${activeUiTab === "json" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("json")}> Layout JSON</button>
-              <button className={`tab-btn ${activeUiTab === "flutter" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("flutter")}> Flutter Output</button>
-              <button className={`tab-btn ${activeUiTab === "html" ? "tab-active" : ""}`} onClick={() => setActiveUiTab("html")}> HTML / CSS Output</button>
-            </div>
+          <section className="panel output-panel" style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+           
+            {/* DROPDOWN-BASED TABS HEADER */}
+            <div
+              className="tabs-header"
+              style={{
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 16px",
+                background: "#091122",
+                borderBottom: "1px solid #334155",
+                gap: "12px",
+                flexWrap: "wrap"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+               
+                {/* 1. IMAGE ANALYSIS DROPDOWN */}
+                <div style={{ position: "relative" }} ref={analysisDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveUiTab("analysis");
+                      setIsAnalysisDropdownOpen((prev) => !prev);
+                      setIsCodeDropdownOpen(false);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "8px 14px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "12.5px",
+                      fontWeight: activeUiTab === "analysis" ? "700" : "500",
+                      background: activeUiTab === "analysis" ? "#1e293b" : "#0f172a",
+                      color: activeUiTab === "analysis" ? "#38bdf8" : "#94a3b8",
+                      border: activeUiTab === "analysis" ? "1px solid #38bdf8" : "1px solid #334155",
+                      boxShadow: activeUiTab === "analysis" ? "0 2px 10px rgba(56, 189, 248, 0.2)" : "none",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    <span></span>
+                    <span>Image Analysis: <strong style={{ color: "#f8fafc" }}>{analysisSubTabNames[activeAnalysisSubTab] || "UI Elements"}</strong></span>
+                    <span style={{ fontSize: "10px", marginLeft: "4px" }}>{isAnalysisDropdownOpen ? "▲" : "▼"}</span>
+                  </button>
 
-            <div className="tab-viewport">
-              {activeUiTab === "sam" && (
-                <div className="viewport-content centered-flex">
-                  {samPreview ? (
-                    <div className="segmented-preview-container">
-                      <img src={samPreview} alt="SAM segmentation output" className="segmented-img" />
-                    </div>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>SAM visual overlay layout results will render here after execution.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeUiTab === "ocr" && (
-                <div className="viewport-content code-layout">
-                  {ocrOutput ? (
-                    <>
-                      <button className="copy-btn" onClick={() => copyToClipboard(JSON.stringify(ocrOutput, null, 2))}>Copy OCR Data</button>
-                      <pre className="code-block">
-                        <code>{JSON.stringify(ocrOutput, null, 2)}</code>
-                      </pre>
-                    </>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Mapped text strings extracted from EasyOCR will render here.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeUiTab === "colors" && (
-                <div className="viewport-content centered-flex">
-                  {colorsOutput && colorsOutput.length > 0 ? (
-                    <div className="colors-grid">
-                      {colorsOutput.map((color, idx) => (
-                        <div key={idx} className="color-swatch-card">
-                          <div className="color-preview-circle" style={{ backgroundColor: color }}></div>
-                          <div className="color-meta-info">
-                            <span className="color-swatch-id">ID: {idx}</span>
-                            <span className="color-swatch-hex">{color}</span>
-                          </div>
-                        </div>
+                  {isAnalysisDropdownOpen && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "calc(100% + 6px)",
+                        left: 0,
+                        background: "#0f172a",
+                        border: "1px solid #334155",
+                        borderRadius: "8px",
+                        padding: "6px",
+                        minWidth: "220px",
+                        boxShadow: "0 12px 30px rgba(0, 0, 0, 0.75)",
+                        zIndex: 1000,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "4px"
+                      }}
+                    >
+                      {[
+                        { id: "sam", label: "1. UI Elements (SAM)" },
+                        { id: "ocr", label: "2. Extracted Text (OCR)" },
+                        { id: "colors", label: "3. Color Palette" },
+                        { id: "json", label: "4. UI Structure (JSON)" },
+                        { id: "similarity", label: "5. Accuracy Check" },
+                      ].map((subTab) => (
+                        <button
+                          key={subTab.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveUiTab("analysis");
+                            setActiveAnalysisSubTab(subTab.id);
+                            setIsAnalysisDropdownOpen(false);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "8px",
+                            padding: "8px 12px",
+                            borderRadius: "5px",
+                            border: "none",
+                            background: activeUiTab === "analysis" && activeAnalysisSubTab === subTab.id ? "#1e293b" : "transparent",
+                            color: activeUiTab === "analysis" && activeAnalysisSubTab === subTab.id ? "#38bdf8" : "#cbd5e1",
+                            fontSize: "12px",
+                            fontWeight: activeUiTab === "analysis" && activeAnalysisSubTab === subTab.id ? "700" : "500",
+                            textAlign: "left",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <span>{subTab.label}</span>
+                          {activeUiTab === "analysis" && activeAnalysisSubTab === subTab.id && (
+                            <span style={{ color: "#38bdf8", fontSize: "12px" }}>✓</span>
+                          )}
+                        </button>
                       ))}
                     </div>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Extracted hexadecimal component colors will display here.</p>
+                  )}
+                </div>
+
+                {/* 2. CODE & PREVIEW DROPDOWN */}
+                <div style={{ position: "relative" }} ref={codeDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveUiTab("generated_code");
+                      setIsCodeDropdownOpen((prev) => !prev);
+                      setIsAnalysisDropdownOpen(false);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "8px 14px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "12.5px",
+                      fontWeight: activeUiTab === "generated_code" ? "700" : "500",
+                      background: activeUiTab === "generated_code" ? "#1e293b" : "#0f172a",
+                      color: activeUiTab === "generated_code" ? "#38bdf8" : "#94a3b8",
+                      border: activeUiTab === "generated_code" ? "1px solid #38bdf8" : "1px solid #334155",
+                      boxShadow: activeUiTab === "generated_code" ? "0 2px 10px rgba(56, 189, 248, 0.2)" : "none",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    <span></span>
+                    <span>Code & Preview: <strong style={{ color: "#f8fafc" }}>{activeCodeSubTab === "html" ? "HTML / CSS" : "Flutter"}</strong></span>
+                    <span style={{ fontSize: "10px", marginLeft: "4px" }}>{isCodeDropdownOpen ? "▲" : "▼"}</span>
+                  </button>
+
+                  {isCodeDropdownOpen && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "calc(100% + 6px)",
+                        left: 0,
+                        background: "#0f172a",
+                        border: "1px solid #334155",
+                        borderRadius: "8px",
+                        padding: "6px",
+                        minWidth: "240px",
+                        boxShadow: "0 12px 30px rgba(0, 0, 0, 0.75)",
+                        zIndex: 1000,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "4px"
+                      }}
+                    >
+                      {/* Sub-option: HTML */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveUiTab("generated_code");
+                          setActiveCodeSubTab("html");
+                          setIsCodeDropdownOpen(false);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "8px",
+                          padding: "8px 12px",
+                          borderRadius: "5px",
+                          border: "none",
+                          background: activeUiTab === "generated_code" && activeCodeSubTab === "html" ? "#1e293b" : "transparent",
+                          color: activeUiTab === "generated_code" && activeCodeSubTab === "html" ? "#38bdf8" : "#cbd5e1",
+                          fontSize: "12px",
+                          fontWeight: activeUiTab === "generated_code" && activeCodeSubTab === "html" ? "700" : "500",
+                          textAlign: "left",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <span> HTML / CSS Code</span>
+                        {activeUiTab === "generated_code" && activeCodeSubTab === "html" && (
+                          <span style={{ color: "#38bdf8", fontSize: "12px" }}>✓</span>
+                        )}
+                      </button>
+
+                      {/* Sub-option: Flutter */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveUiTab("generated_code");
+                          setActiveCodeSubTab("flutter");
+                          setIsCodeDropdownOpen(false);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "8px",
+                          padding: "8px 12px",
+                          borderRadius: "5px",
+                          border: "none",
+                          background: activeUiTab === "generated_code" && activeCodeSubTab === "flutter" ? "#1e293b" : "transparent",
+                          color: activeUiTab === "generated_code" && activeCodeSubTab === "flutter" ? "#38bdf8" : "#cbd5e1",
+                          fontSize: "12px",
+                          fontWeight: activeUiTab === "generated_code" && activeCodeSubTab === "flutter" ? "700" : "500",
+                          textAlign: "left",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <span> Flutter Code</span>
+                        {activeUiTab === "generated_code" && activeCodeSubTab === "flutter" && (
+                          <span style={{ color: "#38bdf8", fontSize: "12px" }}>✓</span>
+                        )}
+                      </button>
+
+                      <div style={{ height: "1px", background: "#334155", margin: "4px 0" }} />
+
+                      {/* Split View Toggle Option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveUiTab("generated_code");
+                          setIsSideBySidePreview((prev) => !prev);
+                          setIsCodeDropdownOpen(false);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "8px",
+                          padding: "8px 12px",
+                          borderRadius: "5px",
+                          border: "none",
+                          background: isSideBySidePreview ? "#0284c725" : "transparent",
+                          color: isSideBySidePreview ? "#38bdf8" : "#cbd5e1",
+                          fontSize: "12px",
+                          fontWeight: isSideBySidePreview ? "700" : "500",
+                          textAlign: "left",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <span>◫ Split View (Code + Live Preview)</span>
+                        <span style={{
+                          fontSize: "10px",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          background: isSideBySidePreview ? "#0284c7" : "#334155",
+                          color: "#fff"
+                        }}>
+                          {isSideBySidePreview ? "ENABLED" : "OFF"}
+                        </span>
+                      </button>
                     </div>
                   )}
                 </div>
+
+              </div>
+
+              {/* Contextual Action Buttons in Header */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {activeUiTab === "analysis" && activeAnalysisSubTab === "json" && uiJsonOutput && (
+                  <button className="copy-btn" onClick={() => copyToClipboard(uiJsonOutput)} style={{ position: "static", margin: 0 }}>
+                    Copy UI Structure
+                  </button>
+                )}
+                {activeUiTab === "analysis" && activeAnalysisSubTab === "ocr" && ocrOutput && (
+                  <button className="copy-btn" onClick={() => copyToClipboard(JSON.stringify(ocrOutput, null, 2))} style={{ position: "static", margin: 0 }}>
+                    Copy Extracted Text
+                  </button>
+                )}
+
+                {activeUiTab === "generated_code" && activeCodeSubTab === "flutter" && uiFlutterOutput && (
+                  <button
+                    className="copy-btn"
+                    onClick={openInDartPad}
+                    style={{ margin: 0, position: "static", background: "#059669", color: "#ffffff" }}
+                    title="Open code directly inside interactive Google DartPad runner"
+                  >
+                     Open in Live Playground
+                  </button>
+                )}
+                {activeUiTab === "generated_code" && activeCodeSubTab === "html" && uiHtmlOutput && (
+                  <button
+                    className="copy-btn"
+                    onClick={() => copyToClipboard(uiHtmlOutput)}
+                    style={{ margin: 0, position: "static" }}
+                  >
+                    Copy HTML Code
+                  </button>
+                )}
+                {activeUiTab === "generated_code" && activeCodeSubTab === "flutter" && uiFlutterOutput && (
+                  <button
+                    className="copy-btn"
+                    onClick={() => copyToClipboard(uiFlutterOutput)}
+                    style={{ margin: 0, position: "static" }}
+                  >
+                    Copy Flutter Code
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="tab-viewport" style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              {/* =======================================================
+                  MAIN TAB 1 VIEWPORT: IMAGE ANALYSIS
+                  ======================================================= */}
+              {activeUiTab === "analysis" && (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", overflow: "hidden", minHeight: 0 }}>
+
+                  {/* 1. UI Elements View */}
+                  {activeAnalysisSubTab === "sam" && (
+                    <div className="viewport-content centered-flex" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                      {samPreview ? (
+                        <div className="segmented-preview-container">
+                          <img src={samPreview} alt="Detected UI elements layout output" className="segmented-img" />
+                        </div>
+                      ) : (
+                        <div className="empty-state">
+                          <span className="empty-icon"></span>
+                          <p>Detected UI elements layout results will render here after execution.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 2. Extracted Text Output */}
+                  {activeAnalysisSubTab === "ocr" && (
+                    <div className="viewport-content code-layout" style={{ flex: 1, minHeight: 0, overflowY: "auto", position: "relative" }}>
+                      {ocrOutput ? (
+                        <pre className="code-block" style={{ margin: 0 }}>
+                          <code>{JSON.stringify(ocrOutput, null, 2)}</code>
+                        </pre>
+                      ) : (
+                        <div className="empty-state">
+                          <span className="empty-icon"></span>
+                          <p>Text extracted from the screen will render here.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 3. Color Palette Output */}
+                  {activeAnalysisSubTab === "colors" && (
+                    <div className="viewport-content centered-flex" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                      {colorsOutput && colorsOutput.length > 0 ? (
+                        <div className="colors-grid">
+                          {colorsOutput.map((color, idx) => (
+                            <div key={idx} className="color-swatch-card">
+                              <div className="color-preview-circle" style={{ backgroundColor: color }}></div>
+                              <div className="color-meta-info">
+                                <span className="color-swatch-id">ID: {idx}</span>
+                                <span className="color-swatch-hex">{color}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="empty-state">
+                          <span className="empty-icon"></span>
+                          <p>Extracted hexadecimal design colors will display here.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 4. UI Structure Output */}
+                  {activeAnalysisSubTab === "json" && (
+                    <div className="viewport-content code-layout" style={{ flex: 1, minHeight: 0, overflowY: "auto", position: "relative" }}>
+                      {uiJsonOutput ? (
+                        <pre className="code-block" style={{ margin: 0 }}>
+                          <code>{uiJsonOutput}</code>
+                        </pre>
+                      ) : (
+                        <div className="empty-state">
+                          <span className="empty-icon"></span>
+                          <p>Generated UI structure hierarchy will render here.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 5. Accuracy Check Output */}
+                  {activeAnalysisSubTab === "similarity" && (
+                    <div
+                      className="viewport-content"
+                      style={{
+                        flex: 1,
+                        minHeight: 0,
+                        overflowY: "auto",
+                        padding: "20px",
+                        display: "block"
+                      }}
+                    >
+                      {similarityOutput ? (
+                        <div className="similarity-container" style={{ display: "flex", flexDirection: "column", gap: "20px", minHeight: "min-content" }}>
+                         
+                          {/* Accuracy Engine Status & Relevance Card */}
+                          {irEvaluationResult && (
+                            <div style={{
+                              background: "#1e293b",
+                              border: "1px solid #334155",
+                              borderRadius: "8px",
+                              padding: "16px"
+                            }}>
+                              <h4 style={{ color: "#38bdf8", margin: "0 0 10px 0" }}>Accuracy & Match Telemetry</h4>
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "12px" }}>
+                                <div>
+                                  <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>STATUS</span>
+                                  <div style={{ fontWeight: "bold", color: irEvaluationResult.status === "FULL_MATCH" ? "#34d399" : "#f59e0b" }}>{irEvaluationResult.status}</div>
+                                </div>
+                                <div>
+                                  <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>RELEVANCE SCORE</span>
+                                  <div style={{ fontWeight: "bold", color: "#38bdf8" }}>{Math.round(irEvaluationResult.relevance * 100)}%</div>
+                                </div>
+                                <div>
+                                  <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>COVERAGE SCORE</span>
+                                  <div style={{ fontWeight: "bold", color: "#38bdf8" }}>{Math.round(irEvaluationResult.coverage * 100)}%</div>
+                                </div>
+                              </div>
+                              {irEvaluationResult.unresolved && irEvaluationResult.unresolved.length > 0 && (
+                                <div style={{ borderTop: "1px dashed #334155", paddingTop: "8px" }}>
+                                  <span style={{ fontSize: "10px", color: "#f87171", fontWeight: "bold" }}>UNRESOLVED REQUIREMENTS:</span>
+                                  <ul style={{ margin: "4px 0 0 16px", padding: 0, fontSize: "11px", color: "#cbd5e1" }}>
+                                    {irEvaluationResult.unresolved.map((u, i) => <li key={i}>{u}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Visual Match Quality Ring */}
+                          {clipSimilarity !== null && (
+                            <div className="visual-alignment-metrics" style={{
+                              background: "#1e293b",
+                              border: "1px solid #334155",
+                              borderRadius: "8px",
+                              padding: "20px",
+                              textAlign: "center"
+                            }}>
+                              <h3 style={{ margin: "0 0 10px 0", color: "#f8fafc", fontSize: "16px" }}>Reconstruction Quality</h3>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "15px" }}>
+                                <div className="progress-circle-indicator" style={{
+                                  position: "relative",
+                                  width: "120px",
+                                  height: "120px",
+                                  borderRadius: "50%",
+                                  background: `conic-gradient(#10b981 ${clipSimilarity * 3.6}deg, #334155 0deg)`,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}>
+                                  <div style={{
+                                    width: "100px",
+                                    height: "100px",
+                                    borderRadius: "50%",
+                                    background: "#1e293b",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexDirection: "column"
+                                  }}>
+                                    <span style={{ color: "#34d399", fontSize: "24px", fontWeight: "bold" }}>{clipSimilarity}%</span>
+                                    <span style={{ color: "#94a3b8", fontSize: "9px", textTransform: "uppercase" }}>Visual Match</span>
+                                  </div>
+                                </div>
+                               
+                                <div style={{ textAlign: "left" }}>
+                                  <h4 style={{ color: "#38bdf8", margin: "0 0 5px 0" }}>Semantic Visual Verification</h4>
+                                  <p style={{ color: "#94a3b8", fontSize: "12px", margin: "0", maxWidth: "400px" }}>
+                                    Evaluates structural similarities and color themes between original source inputs and compiled HTML outputs.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Render Visual Comparison Side-by-Side */}
+                          {htmlRenderPreview && imagePreview && (
+                            <div className="visual-side-by-side" style={{
+                              display: "grid",
+                              gridTemplateColumns: "1fr 1fr",
+                              gap: "15px",
+                            }}>
+                              <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", padding: "10px" }}>
+                                <h4 style={{ color: "#94a3b8", margin: "0 0 8px 0", textAlign: "center", fontSize: "12px" }}>ORIGINAL INPUT VIEW</h4>
+                                <img src={imagePreview} alt="Original input mockup" style={{ width: "100%", height: "auto", maxHeight: "400px", objectFit: "contain", borderRadius: "4px" }} />
+                              </div>
+                             
+                              <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", padding: "10px" }}>
+                                <h4 style={{ color: "#94a3b8", margin: "0 0 8px 0", textAlign: "center", fontSize: "12px" }}>RENDERED MOCKUP</h4>
+                                <img src={htmlRenderPreview} alt="Rendered preview mockup" style={{ width: "100%", height: "auto", maxHeight: "400px", objectFit: "contain", borderRadius: "4px" }} />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="similarity-card" style={{ width: "100%" }}>
+                            <h3 style={{ marginBottom: "15px", color: "#f8fafc", fontSize: "14px" }}>Design Matching & Retrieval Log</h3>
+                            <pre style={{
+                              backgroundColor: "#0f172a",
+                              padding: "15px",
+                              borderRadius: "6px",
+                              border: "1px solid #334155",
+                              color: "#38bdf8",
+                              fontFamily: "monospace",
+                              fontSize: "12px",
+                              lineHeight: "1.5",
+                              whiteSpace: "pre-wrap",
+                              overflowX: "auto"
+                            }}>
+                              <code>{similarityOutput}</code>
+                            </pre>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="empty-state">
+                          <span className="empty-icon"></span>
+                          <p>Visual accuracy check and matching logs will display here.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </div>
               )}
 
-              {activeUiTab === "similarity" && (
-                <div className="viewport-content" style={{ overflow: "auto", height: "100%", padding: "20px" }}>
-                  {similarityOutput ? (
-                    <div className="similarity-container" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                      
-                      {/* IR Engine Status & Relevance Card */}
-                      {irEvaluationResult && (
-                        <div style={{
-                          background: "#1e293b",
-                          border: "1px solid #334155",
-                          borderRadius: "8px",
-                          padding: "16px"
-                        }}>
-                          <h4 style={{ color: "#38bdf8", margin: "0 0 10px 0" }}>IR Engine Evaluation Telemetry</h4>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "12px" }}>
-                            <div>
-                              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>STATUS</span>
-                              <div style={{ fontWeight: "bold", color: irEvaluationResult.status === "FULL_MATCH" ? "#34d399" : "#f59e0b" }}>{irEvaluationResult.status}</div>
-                            </div>
-                            <div>
-                              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>RELEVANCE SCORE</span>
-                              <div style={{ fontWeight: "bold", color: "#38bdf8" }}>{Math.round(irEvaluationResult.relevance * 100)}%</div>
-                            </div>
-                            <div>
-                              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>COVERAGE SCORE</span>
-                              <div style={{ fontWeight: "bold", color: "#38bdf8" }}>{Math.round(irEvaluationResult.coverage * 100)}%</div>
-                            </div>
+              {/* =======================================================
+                  MAIN TAB 2 VIEWPORT: CODE & PREVIEW
+                  ======================================================= */}
+              {activeUiTab === "generated_code" && (
+                <div className="viewport-content code-layout" style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, padding: 0 }}>
+
+                  {/* Code & Live Preview Layout Area */}
+                  <div style={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: "hidden",
+                    display: isSideBySidePreview ? "grid" : "block",
+                    gridTemplateColumns: isSideBySidePreview ? "1fr 1fr" : "1fr",
+                    height: "100%"
+                  }}>
+                   
+                    {/* LEFT PANE: SOURCE CODE DISPLAY */}
+                    <div style={{
+                      height: "100%",
+                      minHeight: 0,
+                      overflowY: "auto",
+                      padding: "16px",
+                      borderRight: isSideBySidePreview ? "1px solid #334155" : "none"
+                    }}>
+                      {activeCodeSubTab === "html" ? (
+                        uiHtmlOutput ? (
+                          <pre className="code-block" style={{ margin: 0 }}>
+                            <code>{uiHtmlOutput}</code>
+                          </pre>
+                        ) : (
+                          <div className="empty-state">
+                            <span className="empty-icon"></span>
+                            <p>Generated semantic HTML5 structural layout and CSS code will render here.</p>
                           </div>
-                          {irEvaluationResult.unresolved && irEvaluationResult.unresolved.length > 0 && (
-                            <div style={{ borderTop: "1px dashed #334155", paddingTop: "8px" }}>
-                              <span style={{ fontSize: "10px", color: "#f87171", fontWeight: "bold" }}>UNRESOLVED REQUIREMENTS:</span>
-                              <ul style={{ margin: "4px 0 0 16px", padding: 0, fontSize: "11px", color: "#cbd5e1" }}>
-                                {irEvaluationResult.unresolved.map((u, i) => <li key={i}>{u}</li>)}
-                              </ul>
+                        )
+                      ) : (
+                        uiFlutterOutput ? (
+                          <pre className="code-block" style={{ margin: 0 }}>
+                            <code>{uiFlutterOutput}</code>
+                          </pre>
+                        ) : (
+                          <div className="empty-state">
+                            <span className="empty-icon"></span>
+                            <p>Generated Dart/Flutter widgets implementation code will render here.</p>
+                          </div>
+                        )
+                      )}
+                    </div>
+
+                    {/* RIGHT PANE: LIVE SIDE-BY-SIDE COMPILER & PREVIEW */}
+                    {isSideBySidePreview && (
+                      <div style={{
+                        height: "100%",
+                        minHeight: 0,
+                        display: "flex",
+                        flexDirection: "column",
+                        background: "#020617",
+                        overflow: "hidden"
+                      }}>
+                        <div style={{
+                          padding: "6px 14px",
+                          background: "#0b1329",
+                          borderBottom: "1px solid #334155",
+                          fontSize: "11px",
+                          color: "#94a3b8",
+                          fontWeight: "bold",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          flexShrink: 0
+                        }}>
+                          <span>LIVE COMPILER PREVIEW</span>
+                          <span>{activeCodeSubTab === "html" ? "Live Web Preview" : "Mobile App Preview"}</span>
+                        </div>
+
+                        {/* Preview Scrollable Viewport */}
+                        <div style={{ flex: 1, minHeight: 0, padding: "14px", overflowY: "auto" }}>
+                          {activeCodeSubTab === "html" ? (
+                            uiHtmlOutput ? (
+                              <iframe
+                                title="Live Web Preview"
+                                srcDoc={uiHtmlOutput}
+                                sandbox="allow-scripts"
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  minHeight: "520px",
+                                  backgroundColor: "#ffffff",
+                                  border: "1px solid #334155",
+                                  borderRadius: "6px"
+                                }}
+                              />
+                            ) : (
+                              <div className="empty-state">
+                                <p>Awaiting HTML code generation to mount live preview...</p>
+                              </div>
+                            )
+                          ) : (
+                            /* Flutter Preview Pane */
+                            <div style={{ display: "flex", flexDirection: "column", gap: "14px", minHeight: "min-content" }}>
+                              {htmlRenderPreview ? (
+                                <div style={{ background: "#1e293b", padding: "14px", borderRadius: "8px", border: "1px solid #334155", textAlign: "center" }}>
+                                  <span style={{ fontSize: "11px", color: "#38bdf8", fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                                    RENDERED MOCKUP
+                                  </span>
+                                  <img
+                                    src={htmlRenderPreview}
+                                    alt="Compiled UI visual preview"
+                                    style={{ width: "100%", height: "auto", borderRadius: "4px", objectFit: "contain", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}
+                                  />
+                                </div>
+                              ) : (
+                                <div style={{ background: "#1e293b", padding: "16px", borderRadius: "8px", border: "1px dashed #334155", textAlign: "center" }}>
+                                  <p style={{ color: "#94a3b8", fontSize: "12px", margin: 0 }}>
+                                    Snapshot will appear here once the pipeline renders the visual alignment check.
+                                  </p>
+                                </div>
+                              )}
+
+                              <div style={{ background: "#0f172a", padding: "16px", borderRadius: "8px", border: "1px solid #334155", color: "#cbd5e1", fontSize: "12px", lineHeight: "1.5" }}>
+                                <h4 style={{ color: "#38bdf8", margin: "0 0 6px 0", fontSize: "13px" }}>⚡ Interactive Flutter Sandbox</h4>
+                                <p style={{ margin: "0 0 12px 0", color: "#94a3b8" }}>
+                                  Flutter widgets compile through the Skia/Impeller engine. Launch the interactive editor in DartPad to test and interact with this widget in real-time:
+                                </p>
+                                <button
+                                  onClick={openInDartPad}
+                                  disabled={!uiFlutterOutput}
+                                  style={{
+                                    width: "100%",
+                                    padding: "10px 14px",
+                                    borderRadius: "5px",
+                                    background: "#0284c7",
+                                    color: "#ffffff",
+                                    border: "none",
+                                    fontWeight: "bold",
+                                    fontSize: "12px",
+                                    cursor: uiFlutterOutput ? "pointer" : "not-allowed",
+                                    opacity: uiFlutterOutput ? 1 : 0.5,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "8px"
+                                  }}
+                                >
+                                  <span></span> Open in Live Playground
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
-                      )}
-
-                      {/* CLIP Similarity Score Progress Tracker */}
-                      {clipSimilarity !== null && (
-                        <div className="visual-alignment-metrics" style={{
-                          background: "#1e293b",
-                          border: "1px solid #334155",
-                          borderRadius: "8px",
-                          padding: "20px",
-                          textAlign: "center"
-                        }}>
-                          <h3 style={{ margin: "0 0 10px 0", color: "#f8fafc", fontSize: "16px" }}>Reconstruction Metrics</h3>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "15px" }}>
-                            <div className="progress-circle-indicator" style={{
-                              position: "relative",
-                              width: "120px",
-                              height: "120px",
-                              borderRadius: "50%",
-                              background: `conic-gradient(#10b981 ${clipSimilarity * 3.6}deg, #334155 0deg)`,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center"
-                            }}>
-                              <div style={{
-                                width: "100px",
-                                height: "100px",
-                                borderRadius: "50%",
-                                background: "#1e293b",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexDirection: "column"
-                              }}>
-                                <span style={{ color: "#34d399", fontSize: "24px", fontWeight: "bold" }}>{clipSimilarity}%</span>
-                                <span style={{ color: "#94a3b8", fontSize: "9px", textTransform: "uppercase" }}>CLIP Match</span>
-                              </div>
-                            </div>
-                            
-                            <div style={{ textAlign: "left" }}>
-                              <h4 style={{ color: "#38bdf8", margin: "0 0 5px 0" }}>CLIP Semantic Verification</h4>
-                              <p style={{ color: "#94a3b8", fontSize: "12px", margin: "0", maxWidth: "400px" }}>
-                                Evaluates structural similarities and color themes between original source inputs and compiled HTML outputs.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Render Visual Comparison Side-by-Side */}
-                      {htmlRenderPreview && imagePreview && (
-                        <div className="visual-side-by-side" style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: "15px",
-                        }}>
-                          <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", padding: "10px" }}>
-                            <h4 style={{ color: "#94a3b8", margin: "0 0 8px 0", textAlign: "center", fontSize: "12px" }}>ORIGINAL INPUT VIEW</h4>
-                            <img src={imagePreview} alt="Original input mockup" style={{ width: "100%", height: "auto", maxHeight: "400px", objectFit: "contain", borderRadius: "4px" }} />
-                          </div>
-                          
-                          <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", padding: "10px" }}>
-                            <h4 style={{ color: "#94a3b8", margin: "0 0 8px 0", textAlign: "center", fontSize: "12px" }}>HTML OUTPUT RENDER</h4>
-                            <img src={htmlRenderPreview} alt="Rendered HTML preview mockup" style={{ width: "100%", height: "auto", maxHeight: "400px", objectFit: "contain", borderRadius: "4px" }} />
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="similarity-card" style={{ width: "100%" }}>
-                        <h3 style={{ marginBottom: "15px", color: "#f8fafc", fontSize: "14px" }}>Vector Search Matching Log</h3>
-                        <pre style={{ 
-                          backgroundColor: "#0f172a", 
-                          padding: "15px", 
-                          borderRadius: "6px", 
-                          border: "1px solid #334155", 
-                          color: "#38bdf8", 
-                          fontFamily: "monospace", 
-                          fontSize: "12px", 
-                          lineHeight: "1.5", 
-                          whiteSpace: "pre-wrap" 
-                        }}>
-                          <code>{similarityOutput}</code>
-                        </pre>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Database FAISS and CLIP similarity check logs will display here.</p>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
 
-              {activeUiTab === "json" && (
-                <div className="viewport-content code-layout">
-                  {uiJsonOutput ? (
-                    <>
-                      <button className="copy-btn" onClick={() => copyToClipboard(uiJsonOutput)}>Copy JSON Blueprint</button>
-                      <pre className="code-block">
-                        <code>{uiJsonOutput}</code>
-                      </pre>
-                    </>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Generated bounding element JSON hierarchies will render here.</p>
-                    </div>
-                  )}
-                </div>
-              )}
+                  </div>
 
-              {activeUiTab === "flutter" && (
-                <div className="viewport-content code-layout">
-                  {uiFlutterOutput ? (
-                    <>
-                      <button className="copy-btn" onClick={() => copyToClipboard(uiFlutterOutput)}>Copy Dart Code</button>
-                      <pre className="code-block">
-                        <code>{uiFlutterOutput}</code>
-                      </pre>
-                    </>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Generated Dart/Flutter widgets implementation code will render here.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeUiTab === "html" && (
-                <div className="viewport-content code-layout">
-                  {uiHtmlOutput ? (
-                    <>
-                      <button className="copy-btn" onClick={() => copyToClipboard(uiHtmlOutput)}>Copy HTML Code</button>
-                      <pre className="code-block">
-                        <code>{uiHtmlOutput}</code>
-                      </pre>
-                    </>
-                  ) : (
-                    <div className="empty-state">
-                      <span className="empty-icon"></span>
-                      <p>Generated semantic HTML5 structural layout and CSS code will render here.</p>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
@@ -1194,11 +1910,233 @@ function App() {
       )}
 
       {/* =======================================================
+          MODAL: ZIP ARCHIVE IMAGE SELECTION GALLERY
+          ======================================================= */}
+      {isZipModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0, 0, 0, 0.82)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 10006
+          }}
+          onClick={() => setIsZipModalOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "#0f172a",
+              border: "1px solid #38bdf8",
+              borderRadius: "12px",
+              width: "880px",
+              maxWidth: "94vw",
+              height: "82vh",
+              padding: "20px",
+              boxShadow: "0 25px 50px rgba(0, 0, 0, 0.8)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+              color: "#f8fafc",
+              overflow: "hidden"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #334155", paddingBottom: "12px" }}>
+              <div>
+                <h3 style={{ margin: 0, color: "#38bdf8", fontSize: "17px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span></span> Select UI Mockup from ZIP Archive
+                </h3>
+                <span style={{ fontSize: "12px", color: "#94a3b8", marginTop: "3px", display: "block" }}>
+                  Archive: <strong>{zipFileName}</strong> • Found <strong>{zipImages.length}</strong> image screens
+                </span>
+              </div>
+              <button
+                onClick={() => setIsZipModalOpen(false)}
+                style={{ background: "transparent", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Search Filter Bar */}
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <input
+                type="text"
+                value={zipSearchQuery}
+                onChange={(e) => setZipSearchQuery(e.target.value)}
+                placeholder="Search screen by name (e.g. login, dashboard, checkout)..."
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #334155",
+                  background: "#020617",
+                  color: "#f8fafc",
+                  fontSize: "12.5px",
+                  outline: "none"
+                }}
+              />
+              <span style={{ fontSize: "11.5px", color: "#94a3b8" }}>
+                Showing {filteredZipImages.length} of {zipImages.length}
+              </span>
+            </div>
+
+            {/* Image Grid Gallery Viewport */}
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
+                gap: "14px",
+                padding: "4px",
+                alignContent: "start"
+              }}
+            >
+              {filteredZipImages.map((imgItem, idx) => {
+                const isSelected = selectedFile?.name === imgItem.name;
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => handleSelectImageFromZip(imgItem)}
+                    style={{
+                      backgroundColor: isSelected ? "#0369a130" : "#1e293b",
+                      border: isSelected ? "2px solid #38bdf8" : "1px solid #334155",
+                      borderRadius: "8px",
+                      padding: "10px",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                      boxShadow: isSelected ? "0 0 12px rgba(56, 189, 248, 0.35)" : "0 4px 10px rgba(0,0,0,0.3)",
+                      transition: "transform 0.15s ease, border-color 0.15s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) e.currentTarget.style.borderColor = "#38bdf8";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) e.currentTarget.style.borderColor = "#334155";
+                      e.currentTarget.style.transform = "translateY(0)";
+                    }}
+                  >
+                    {/* Thumbnail Box */}
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "135px",
+                        background: "#0b1329",
+                        borderRadius: "5px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
+                        position: "relative"
+                      }}
+                    >
+                      <img
+                        src={imgItem.previewUrl}
+                        alt={imgItem.name}
+                        style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                      />
+                      {isSelected && (
+                        <span style={{
+                          position: "absolute",
+                          top: "6px",
+                          right: "6px",
+                          background: "#0284c7",
+                          color: "#fff",
+                          fontSize: "10px",
+                          fontWeight: "bold",
+                          padding: "2px 6px",
+                          borderRadius: "4px"
+                        }}>
+                          ACTIVE
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Meta: File Name */}
+                    <div style={{ fontSize: "12px", color: "#f8fafc", fontWeight: "600", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={imgItem.name}>
+                      {imgItem.name}
+                    </div>
+
+                    {/* Meta: Dimensions & File Size */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "11px", color: "#94a3b8" }}>
+                      <span style={{ background: "#0f172a", padding: "2px 5px", borderRadius: "3px" }}>
+                        {imgItem.dimensions}
+                      </span>
+                      <span style={{ color: "#38bdf8", fontWeight: "600" }}>
+                        {imgItem.sizeFormatted}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectImageFromZip(imgItem);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "6px",
+                        background: isSelected ? "#0284c7" : "#334155",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "4px",
+                        fontSize: "11px",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        marginTop: "2px"
+                      }}
+                    >
+                      {isSelected ? "✓ Selected Screen" : "Use this screen"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #334155", paddingTop: "12px" }}>
+              <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                 Click any screen above to load it into the engine preview.
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsZipModalOpen(false)}
+                style={{
+                  background: "#334155",
+                  border: "none",
+                  color: "#f8fafc",
+                  padding: "7px 16px",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600"
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =======================================================
           WORKSPACE 2: FIGMA TO CODE COMPILER WORKSPACE
           ======================================================= */}
       {workspace === "figma" && (
         <div className="figma-grid-view">
-          
+         
           {/* Left Inputs/Paster Area */}
           <div className="figma-input-side">
             {/* Step 1 Form */}
@@ -1211,21 +2149,21 @@ function App() {
               <form onSubmit={handleExtractSubmit} className="figma-form">
                 <div className="form-row">
                   <label>Personal Access Token:</label>
-                  <input 
-                    type="password" 
-                    value={figmaToken} 
-                    onChange={(e) => setFigmaToken(e.target.value)} 
-                    placeholder="Figma Token..." 
+                  <input
+                    type="password"
+                    value={figmaToken}
+                    onChange={(e) => setFigmaToken(e.target.value)}
+                    placeholder="Figma Token..."
                     className="figma-input"
                   />
                 </div>
                 <div className="form-row">
                   <label>Figma File Key</label>
-                  <input 
-                    type="text" 
-                    value={fileKey} 
-                    onChange={(e) => setFileKey(e.target.value)} 
-                    placeholder="File Key..." 
+                  <input
+                    type="text"
+                    value={fileKey}
+                    onChange={(e) => setFileKey(e.target.value)}
+                    placeholder="File Key..."
                     className="figma-input"
                   />
                 </div>
@@ -1254,10 +2192,10 @@ function App() {
               <div className="figma-form">
                 <div className="form-row">
                   <label>Figma Schema JSON:</label>
-                  <textarea 
-                    value={pastedJson} 
-                    onChange={(e) => handlePastedJsonChange(e.target.value)} 
-                    placeholder="Paste figma json here or use fetched output..." 
+                  <textarea
+                    value={pastedJson}
+                    onChange={(e) => handlePastedJsonChange(e.target.value)}
+                    placeholder="Paste figma json here or use fetched output..."
                     className="figma-textarea"
                   />
                 </div>
@@ -1272,19 +2210,19 @@ function App() {
             <div className="figma-configuration-bar">
               <div className="config-group">
                 <label>Component Name:</label>
-                <input 
-                  type="text" 
-                  value={figmaFileName} 
-                  onChange={(e) => setFigmaFileName(e.target.value)} 
-                  placeholder="ComponentName" 
+                <input
+                  type="text"
+                  value={figmaFileName}
+                  onChange={(e) => setFigmaFileName(e.target.value)}
+                  placeholder="ComponentName"
                   className="dashboard-input"
                 />
               </div>
 
               <div className="config-group">
                 <label>Target Language:</label>
-                <select 
-                  value={figmaFormat} 
+                <select
+                  value={figmaFormat}
                   onChange={(e) => setFigmaFormat(e.target.value)}
                   className="dashboard-select"
                 >
@@ -1297,14 +2235,13 @@ function App() {
 
             {/* Split Preview and Code Area */}
             <div className="figma-splits-container">
-              {/* Pages & Canvas Preview */}
               <div className="split-view left-split">
                 <div className="split-header">Figma Page Navigator</div>
                 <div className="split-body">
                   <div className="pages-selection-list">
                     {figmaPages.map((page) => (
-                      <button 
-                        key={page.id} 
+                      <button
+                        key={page.id}
                         className={`page-select-btn ${activeFigmaPageId === page.id ? "selected" : ""}`}
                         onClick={() => setActiveFigmaPageId(page.id)}
                       >
@@ -1318,20 +2255,19 @@ function App() {
                 </div>
               </div>
 
-              {/* Compilation Tab and Code Blocks */}
               <div className="split-view right-split">
                 <div className="split-tab-triggers">
-                  <button 
+                  <button
                     className={`split-tab-btn ${activeFigmaTab === "compiler" ? "active" : ""}`}
                     onClick={() => setActiveFigmaTab("compiler")}
                   >
-                    ⚙️ Standard AST Compiler
+                     Standard AST Compiler
                   </button>
-                  <button 
+                  <button
                     className={`split-tab-btn ${activeFigmaTab === "ai" ? "active" : ""}`}
                     onClick={() => setActiveFigmaTab("ai")}
                   >
-                    ✨ Gemini LLM Refined
+                     Gemini LLM Refined
                   </button>
                 </div>
 
@@ -1387,10 +2323,87 @@ function App() {
       )}
 
       {/* =======================================================
+          WORKSPACE 3: JIRA CONNECTOR WORKSPACE
+          ======================================================= */}
+      {workspace === "jira" && (
+        <div style={{ padding: "30px", height: "calc(100vh - 80px)", overflowY: "auto", background: "#0b1329" }}>
+          <div style={{ maxWidth: "880px", margin: "0 auto", background: "#0f172a", border: "1px solid #334155", borderRadius: "10px", padding: "28px", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", borderBottom: "1px solid #1e293b", paddingBottom: "16px", marginBottom: "20px" }}>
+              <span style={{ fontSize: "28px" }}>📋</span>
+              <div>
+                <h2 style={{ margin: 0, color: "#38bdf8", fontSize: "18px" }}>Atlassian Jira Connector</h2>
+                <p style={{ margin: "4px 0 0 0", color: "#94a3b8", fontSize: "12px" }}>
+                  Connect Jira Software Epics, Stories, and UI Acceptance Criteria directly into the Code Generation Pipeline.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+              <div>
+                <label style={{ display: "block", color: "#cbd5e1", fontSize: "12px", marginBottom: "6px" }}>Jira Domain / Host URL:</label>
+                <input
+                  type="text"
+                  placeholder="https://your-domain.atlassian.net"
+                  className="dashboard-input"
+                  style={{ width: "100%", padding: "10px", borderRadius: "6px", background: "#020617", border: "1px solid #334155", color: "#fff" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", color: "#cbd5e1", fontSize: "12px", marginBottom: "6px" }}>Issue Key or Board Filter:</label>
+                <input
+                  type="text"
+                  placeholder="e.g. PROJ-1024 or sprint=active"
+                  className="dashboard-input"
+                  style={{ width: "100%", padding: "10px", borderRadius: "6px", background: "#020617", border: "1px solid #334155", color: "#fff" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{ display: "block", color: "#cbd5e1", fontSize: "12px", marginBottom: "6px" }}>API Access Token / Service Credential:</label>
+              <input
+                type="password"
+                placeholder="Enter Jira Personal Access Token"
+                className="dashboard-input"
+                style={{ width: "100%", padding: "10px", borderRadius: "6px", background: "#020617", border: "1px solid #334155", color: "#fff" }}
+              />
+            </div>
+
+            <div style={{ background: "#111c38", border: "1px solid #1e293b", borderRadius: "6px", padding: "16px", marginBottom: "20px" }}>
+              <h4 style={{ margin: "0 0 8px 0", color: "#f59e0b", fontSize: "13px" }}>⚡ Jira Acceptance & Story Parser Features:</h4>
+              <ul style={{ margin: 0, paddingLeft: "18px", color: "#94a3b8", fontSize: "12px", lineHeight: "1.6" }}>
+                <li>Extract Gherkin user stories & acceptance criteria to enforce layout validation.</li>
+                <li>Link image designs to active Jira issues for automated compliance testing.</li>
+                <li>Direct pipeline sync back to Jira work tickets upon pull-request generation.</li>
+              </ul>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => alert("Jira connector configured. Ready for issue tracking synchronization.")}
+              style={{
+                background: "linear-gradient(135deg, #0284c7, #0369a1)",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "6px",
+                padding: "11px 20px",
+                fontSize: "13px",
+                fontWeight: "bold",
+                cursor: "pointer"
+              }}
+            >
+              Connect Jira Project
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* =======================================================
           NON-BLOCKING MODAL: INSUFFICIENT RETRIEVAL COVERAGE
           ======================================================= */}
       {isMatchModalOpen && (
-        <div 
+        <div
           style={{
             position: "fixed",
             top: 0,
@@ -1405,7 +2418,7 @@ function App() {
             zIndex: 10000
           }}
         >
-          <div 
+          <div
             style={{
               backgroundColor: "#0f172a",
               border: "1px solid #38bdf8",
@@ -1420,11 +2433,11 @@ function App() {
             <h3 style={{ margin: "0 0 12px 0", color: "#f59e0b", fontSize: "16px" }}>
               ⚠️ Insufficient Retrieval Coverage
             </h3>
-            
+           
             <p style={{ fontSize: "13px", lineHeight: "1.5", color: "#cbd5e1" }}>
               The Knowledge Repo does not contain enough matching evidence for this request.
               <br /><br />
-              <strong>IR Status:</strong> {irEvaluationResult?.status}
+              <strong>Status:</strong> {irEvaluationResult?.status}
               <br />
               <strong>Relevance Score:</strong> {Math.round((irEvaluationResult?.relevance || 0) * 100)}% | <strong>Coverage:</strong> {Math.round((irEvaluationResult?.coverage || 0) * 100)}%
               <br /><br />
@@ -1469,10 +2482,10 @@ function App() {
       )}
 
       {/* =======================================================
-          MODAL 1: INGESTED KNOWLEDGE BASE INSPECTOR (WITH SQL DB)
+          MODAL 1: INGESTED KNOWLEDGE BASE INSPECTOR
           ======================================================= */}
       {isKnowledgeBaseOpen && (
-        <div 
+        <div
           style={{
             position: "fixed",
             top: 0,
@@ -1488,7 +2501,7 @@ function App() {
           }}
           onClick={() => setIsKnowledgeBaseOpen(false)}
         >
-          <div 
+          <div
             style={{
               backgroundColor: "#0f172a",
               border: "1px solid #38bdf8",
@@ -1506,12 +2519,11 @@ function App() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #334155", paddingBottom: "12px" }}>
               <h3 style={{ margin: 0, fontSize: "16px", color: "#38bdf8", display: "flex", alignItems: "center", gap: "8px" }}>
-                <span>📚</span> Ingested Knowledge Base Repository
+                <span></span> Ingested Knowledge Base Repository
               </h3>
-              <button 
+              <button
                 onClick={() => setIsKnowledgeBaseOpen(false)}
                 style={{
                   background: "transparent",
@@ -1527,8 +2539,8 @@ function App() {
 
             <div role="tablist" aria-label="Knowledge source" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "8px" }}>
               {[
-                ["zip", "UI Images"], 
-                ["doc", "Documents"], 
+                ["zip", "UI Images"],
+                ["doc", "Documents"],
                 ["github", "GitHub Repo"],
                 ["sql", "Local SQL DB"]
               ].map(([tab, label]) => (
@@ -1612,8 +2624,6 @@ function App() {
 
             {/* Content Body */}
             <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px" }}>
-              
-              {/* Status Header Overview */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div style={{ backgroundColor: "#1e293b", padding: "10px", borderRadius: "6px", border: "1px solid #334155" }}>
                   <span style={{ fontSize: "10.5px", color: "#94a3b8", textTransform: "uppercase" }}>Ingestion Status</span>
@@ -1629,7 +2639,6 @@ function App() {
                 </div>
               </div>
 
-              {/* Source Thumbnail Preview */}
               {imagePreview && (
                 <div>
                   <span style={{ fontSize: "11px", color: "#94a3b8", fontWeight: "bold", display: "block", marginBottom: "6px" }}>
@@ -1646,31 +2655,30 @@ function App() {
                 </div>
               )}
 
-              {/* Ingested JSON Schema */}
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                   <span style={{ fontSize: "11px", color: "#f59e0b", fontWeight: "bold" }}>
-                    EXTRACTED HIERARCHICAL DESIGNIR JSON:
+                    EXTRACTED UI STRUCTURE:
                   </span>
                   {uiJsonOutput && (
-                    <button 
+                    <button
                       onClick={() => copyToClipboard(uiJsonOutput)}
                       style={{ background: "#334155", color: "#38bdf8", border: "none", borderRadius: "4px", padding: "2px 8px", fontSize: "10px", cursor: "pointer" }}
                     >
-                      Copy JSON
+                      Copy UI Structure
                     </button>
                   )}
                 </div>
-                <pre style={{ 
-                  backgroundColor: "#020617", 
-                  padding: "12px", 
-                  borderRadius: "6px", 
-                  border: "1px solid #334155", 
-                  color: "#38bdf8", 
-                  fontFamily: "monospace", 
-                  fontSize: "11px", 
-                  maxHeight: "180px", 
-                  overflowY: "auto" 
+                <pre style={{
+                  backgroundColor: "#020617",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  border: "1px solid #334155",
+                  color: "#38bdf8",
+                  fontFamily: "monospace",
+                  fontSize: "11px",
+                  maxHeight: "180px",
+                  overflowY: "auto"
                 }}>
                   <code>{uiJsonOutput || "// No UI JSON blueprint loaded. Upload and run the pipeline to ingest knowledge."}</code>
                 </pre>
@@ -1680,7 +2688,7 @@ function App() {
 
             {/* Footer */}
             <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "1px solid #334155", paddingTop: "12px" }}>
-              <button 
+              <button
                 onClick={() => setIsKnowledgeBaseOpen(false)}
                 style={{
                   backgroundColor: "#0284c7",
@@ -1704,7 +2712,7 @@ function App() {
           MODAL 2: SYNTHESIS ENGINE DETAILS (ELABORATED TELEMETRY)
           ======================================================= */}
       {isEngineModalOpen && (
-        <div 
+        <div
           style={{
             position: "fixed",
             top: 0,
@@ -1720,7 +2728,7 @@ function App() {
           }}
           onClick={() => setIsEngineModalOpen(false)}
         >
-          <div 
+          <div
             style={{
               backgroundColor: "#0f172a",
               border: "1px solid #334155",
@@ -1736,12 +2744,11 @@ function App() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #334155", paddingBottom: "12px" }}>
               <h3 style={{ margin: 0, fontSize: "16px", color: "#38bdf8", display: "flex", alignItems: "center", gap: "8px" }}>
-                <span>⚡</span> Synthesis Engine Deep Telemetry & Architecture
+                <span>⚡</span> Synthesis Engine Architecture & Telemetry
               </h3>
-              <button 
+              <button
                 onClick={() => setIsEngineModalOpen(false)}
                 style={{
                   background: "transparent",
@@ -1756,15 +2763,14 @@ function App() {
               </button>
             </div>
 
-            {/* Engine Name */}
             <div>
               <span style={{ fontSize: "11px", color: "#94a3b8", textTransform: "uppercase", fontWeight: "bold" }}>
                 Active Model Tier & Engine
               </span>
-              <div style={{ 
+              <div style={{
                 marginTop: "6px",
-                padding: "8px 12px", 
-                backgroundColor: "#1e293b", 
+                padding: "8px 12px",
+                backgroundColor: "#1e293b",
                 borderRadius: "6px",
                 border: "1px solid #0284c7",
                 color: "#38bdf8",
@@ -1776,19 +2782,18 @@ function App() {
               </div>
             </div>
 
-            {/* Elaborated Context & Description */}
             <div>
               <span style={{ fontSize: "11px", color: "#f59e0b", textTransform: "uppercase", fontWeight: "bold" }}>
-                Elaborated Synthesis Pipeline Description
+                Synthesis Pipeline Architectural Context
               </span>
-              <div style={{ 
+              <div style={{
                 marginTop: "6px",
-                padding: "12px", 
-                backgroundColor: "#1e293b", 
-                borderRadius: "6px", 
-                border: "1px solid #334155", 
-                color: "#cbd5e1", 
-                fontSize: "12px", 
+                padding: "12px",
+                backgroundColor: "#1e293b",
+                borderRadius: "6px",
+                border: "1px solid #334155",
+                color: "#cbd5e1",
+                fontSize: "12px",
                 lineHeight: "1.6"
               }}>
                 <p style={{ margin: "0 0 8px 0" }}>
@@ -1806,9 +2811,8 @@ function App() {
               </div>
             </div>
 
-            {/* Modal Close Button */}
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
-              <button 
+              <button
                 onClick={() => setIsEngineModalOpen(false)}
                 style={{
                   backgroundColor: "#0284c7",
@@ -1831,4 +2835,4 @@ function App() {
   );
 }
 
-export default App;
+export default App

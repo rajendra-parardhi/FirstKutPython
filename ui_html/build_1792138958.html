@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parser Hierarchy - Compiler Design</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #ad8d8c;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    .diagram-container {
+      background-color: #ad8d8c;
+      width: 100%;
+      max-width: 800px;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Node Styling */
+    .node {
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      text-align: center;
+      font-size: 0.9rem;
+      font-weight: 500;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      user-select: none;
+    }
+
+    .node:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Node Color Variables */
+    .node-root {
+      background-color: #ec514a;
+      font-size: 1.25rem;
+      font-weight: 700;
+      padding: 0.85rem 2.5rem;
+    }
+
+    .node-topdown {
+      background-color: #a98f8e;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .node-bottomup {
+      background-color: #ef534c;
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    .node-rec-descent {
+      background-color: #ed5952;
+    }
+
+    .node-ll1 {
+      background-color: #ef514b;
+    }
+
+    .node-lr {
+      background-color: #ed534d;
+    }
+
+    .node-operator {
+      background-color: #eb5a52;
+    }
+
+    /* Details Panel */
+    .lr-variants-card {
+      background-color: #ffffff;
+      color: #ad8d8c;
+      border: 2px solid #d6b6a6;
+      border-radius: 8px;
+      padding: 0.6rem;
+      margin-top: 0.75rem;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      line-height: 1.4;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Hierarchy Connectors */
+    .line-vertical {
+      width: 2px;
+      height: 24px;
+      background-color: rgba(255, 255, 255, 0.7);
+    }
+
+    .branch-connector {
+      width: 50%;
+      height: 20px;
+      border-top: 2px solid rgba(255, 255, 255, 0.7);
+      border-left: 2px solid rgba(255, 255, 255, 0.7);
+      border-right: 2px solid rgba(255, 255, 255, 0.7);
+    }
+
+    /* Layout Grids */
+    .tree-branches {
+      display: flex;
+      width: 100%;
+      gap: 2rem;
+    }
+
+    .branch-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .sub-nodes-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .lr-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    @media (max-width: 640px) {
+      .tree-branches {
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      .branch-connector {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="diagram-container">
+    <!-- Root Node -->
+    <header class="node node-root">Parser</header>
+    <div class="line-vertical"></div>
+
+    <!-- Connector Branch -->
+    <div class="branch-connector"></div>
+
+    <!-- Tree Branches -->
+    <section class="tree-branches">
+      
+      <!-- Top-down Parser Branch -->
+      <article class="branch-column">
+        <div class="node node-topdown">Topdown Parser</div>
+        <div class="sub-nodes-grid">
+          <div class="node node-rec-descent">Recursive descent parser</div>
+          <div class="node node-ll1">LL1</div>
+        </div>
+      </article>
+
+      <!-- Bottom-up Parser Branch -->
+      <article class="branch-column">
+        <div class="node node-bottomup">Bottomup Parser</div>
+        <div class="sub-nodes-grid">
+          <div class="lr-group">
+            <div class="node node-lr">LR parser</div>
+            <div class="lr-variants-card">
+              LR(0) &bull; SLR(1)<br>
+              LALR(1) &bull; CLR(1)
+            </div>
+          </div>
+          <div class="node node-operator">Operator precedence parser</div>
+        </div>
+      </article>
+
+    </section>
+  </main>
+
+</body>
+</html>

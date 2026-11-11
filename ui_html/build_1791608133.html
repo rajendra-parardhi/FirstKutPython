@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DesignIR Poster Layout</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f5efe6;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .poster-container {
+      position: relative;
+      width: 100%;
+      max-width: 735px;
+      aspect-ratio: 735 / 1105;
+      background-color: #faf6f0;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+
+    /* Container 0 */
+    .comp-0 {
+      position: absolute;
+      left: 0%;
+      top: 0%;
+      width: 24.897%; /* 183 / 735 */
+      height: 99.728%; /* 1102 / 1105 */
+      background-color: #b38464;
+    }
+
+    .comp-9 {
+      position: absolute;
+      left: 5.464%;
+      top: 59.891%;
+      width: 25.683%;
+      height: 4.083%;
+      background-color: #a97451;
+    }
+
+    .comp-16 {
+      position: absolute;
+      left: 69.398%;
+      top: 53.448%;
+      width: 8.196%;
+      height: 1.542%;
+      background-color: #79583b;
+    }
+
+    /* Container 1 */
+    .comp-1 {
+      position: absolute;
+      left: 0%;
+      top: 0%;
+      width: 27.891%;
+      height: 53.665%;
+      background-color: rgba(207, 159, 127, 0.85);
+    }
+
+    /* Container 6 */
+    .comp-6 {
+      position: absolute;
+      left: 81.632%;
+      top: 0%;
+      width: 18.367%;
+      height: 99.728%;
+      background-color: #8f6748;
+    }
+
+    /* Container 8 */
+    .comp-8 {
+      position: absolute;
+      left: 0%;
+      top: 83.71%;
+      width: 45.714%;
+      height: 15.927%;
+      background-color: #a4775b;
+    }
+
+    /* Container 4 */
+    .comp-4 {
+      position: absolute;
+      left: 85.714%;
+      top: 68.506%;
+      width: 13.741%;
+      height: 21.99%;
+      background-color: #98623b;
+    }
+
+    /* Container 2 */
+    .comp-2 {
+      position: absolute;
+      left: 61.632%;
+      top: 78.823%;
+      width: 19.047%;
+      height: 11.855%;
+      background-color: #926140;
+    }
+
+    /* Container 5 */
+    .comp-5 {
+      position: absolute;
+      left: 78.367%;
+      top: 82.171%;
+      width: 6.938%;
+      height: 5.972%;
+      background-color: #a66c48;
+    }
+
+    /* Container 3 */
+    .comp-3 {
+      position: absolute;
+      left: 29.251%;
+      top: 67.692%;
+      width: 3.129%;
+      height: 11.131%;
+      background-color: #9b6c4f;
+    }
+
+    /* Container 7 */
+    .comp-7 {
+      position: absolute;
+      left: 40.136%;
+      top: 67.33%;
+      width: 3.401%;
+      height: 9.321%;
+      background-color: #7f5940;
+    }
+
+    /* Container 10 */
+    .comp-10 {
+      position: absolute;
+      left: 60.68%;
+      top: 35.656%;
+      width: 14.557%;
+      height: 1.538%;
+      background-color: #bb8e5f;
+    }
+
+    /* Container 15 */
+    .comp-15 {
+      position: absolute;
+      left: 30.748%;
+      top: 27.33%;
+      width: 4.897%;
+      height: 4.434%;
+      background-color: #9e8b87;
+    }
+
+    /* Container 14 */
+    .comp-14 {
+      position: absolute;
+      left: 28.979%;
+      top: 12.036%;
+      width: 4.353%;
+      height: 0.723%;
+      background-color: #727280;
+    }
+
+    /* Text Components */
+    .text-11 {
+      position: absolute;
+      left: 34%;
+      top: 28%;
+      color: #8f7d76;
+      font-size: clamp(1rem, 3.5vw, 1.8rem);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .text-12 {
+      position: absolute;
+      left: 55%;
+      top: 34.5%;
+      color: #b98e67;
+      font-size: clamp(0.85rem, 2.5vw, 1.3rem);
+      font-style: italic;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .text-13 {
+      position: absolute;
+      left: 34%;
+      top: 45.8%;
+      width: 43%;
+      color: #bd8f5d;
+      font-size: clamp(0.75rem, 2vw, 1rem);
+      line-height: 1.4;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="poster-container">
+    <!-- Component 0 and its children -->
+    <div class="comp-0">
+      <div class="comp-9"></div>
+      <div class="comp-16"></div>
+    </div>
+
+    <!-- Component 1 -->
+    <div class="comp-1"></div>
+
+    <!-- Component 6 -->
+    <div class="comp-6"></div>
+
+    <!-- Component 8 -->
+    <div class="comp-8"></div>
+
+    <!-- Component 4 -->
+    <div class="comp-4"></div>
+
+    <!-- Component 2 -->
+    <div class="comp-2"></div>
+
+    <!-- Component 5 -->
+    <div class="comp-5"></div>
+
+    <!-- Component 3 -->
+    <div class="comp-3"></div>
+
+    <!-- Component 7 -->
+    <div class="comp-7"></div>
+
+    <!-- Component 10 -->
+    <div class="comp-10"></div>
+
+    <!-- Component 15 -->
+    <div class="comp-15"></div>
+
+    <!-- Component 14 -->
+    <div class="comp-14"></div>
+
+    <!-- Text Components -->
+    <div class="text-11">Everything happens</div>
+    <div class="text-12">for a reason</div>
+    <div class="text-13">Be patient. Trust the process. Good things are coming.</div>
+  </div>
+
+</body>
+</html>

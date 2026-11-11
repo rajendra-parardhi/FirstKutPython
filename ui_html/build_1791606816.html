@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life's Lessons</title>
+  <style>
+    :root {
+      --bg-primary: #bca186;
+      --bg-secondary: #9e8367;
+      --accent-light: #bda790;
+      --accent-highlight: #ce8d54;
+      --text-dark: #543e2d;
+      --card-bg: #73553b;
+      --card-inner: #7d593d;
+      --badge-bg: #6b5037;
+      --pill-1: #c6b7a6;
+      --pill-2: #cbbcab;
+      --pill-3: #a39588;
+      --highlight-text: #be8d65;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      font-family: 'Georgia', 'Times New Roman', serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+
+    .poster-card {
+      position: relative;
+      background-color: var(--bg-primary);
+      max-width: 480px;
+      width: 100%;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .top-accent-banner {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 130px;
+      height: 160px;
+      background-color: var(--bg-secondary);
+      border-bottom-left-radius: 80px;
+      z-index: 1;
+    }
+
+    .side-ribbon {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 14px;
+      background-color: var(--accent-light);
+    }
+
+    .content-container {
+      position: relative;
+      z-index: 2;
+      padding: 48px 36px 40px 40px;
+    }
+
+    .tag-badge {
+      display: inline-block;
+      background-color: rgba(163, 149, 136, 0.4);
+      color: var(--text-dark);
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      margin-bottom: 24px;
+      text-transform: uppercase;
+    }
+
+    .poster-title {
+      font-size: 2.5rem;
+      color: var(--text-dark);
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+
+    .divider-pills {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+
+    .pill-1 {
+      width: 48px;
+      height: 6px;
+      background-color: var(--pill-1);
+      border-radius: 3px;
+    }
+
+    .pill-2 {
+      width: 24px;
+      height: 6px;
+      background-color: var(--pill-2);
+      border-radius: 3px;
+    }
+
+    .quote-text {
+      color: var(--text-dark);
+      font-size: 1.15rem;
+      line-height: 1.6;
+      margin-bottom: 12px;
+      font-weight: 500;
+    }
+
+    .highlight-card {
+      background-color: var(--accent-highlight);
+      color: #ffffff;
+      padding: 16px 20px;
+      border-radius: 12px;
+      font-size: 1.15rem;
+      font-style: italic;
+      font-weight: 600;
+      margin: 20px 0;
+      box-shadow: 0 4px 12px rgba(206, 141, 84, 0.3);
+    }
+
+    .inline-highlight {
+      display: inline-block;
+      background-color: rgba(190, 141, 101, 0.25);
+      color: var(--text-dark);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-family: system-ui, -apple-system, sans-serif;
+      margin-top: 6px;
+    }
+
+    .footer-card {
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 32px;
+      box-shadow: 0 8px 20px rgba(115, 85, 59, 0.25);
+    }
+
+    .footer-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .keep-badge {
+      background-color: var(--badge-bg);
+      color: var(--accent-light);
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .trust-text {
+      color: #ffffff;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .sub-card {
+      background-color: var(--card-inner);
+      padding: 12px 16px;
+      border-radius: 10px;
+      color: var(--accent-light);
+      font-size: 0.9rem;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .star-icon {
+      color: var(--accent-highlight);
+    }
+  </style>
+</head>
+<body>
+
+  <main class="poster-card">
+    <div class="top-accent-banner"></div>
+    <div class="side-ribbon"></div>
+
+    <article class="content-container">
+      <span class="tag-badge">Daily Reflection</span>
+      <h1 class="poster-title">Life's Lessons</h1>
+
+      <div class="divider-pills">
+        <div class="pill-1"></div>
+        <div class="pill-2"></div>
+      </div>
+
+      <p class="quote-text">Not every door is meant for you,</p>
+      <p class="quote-text">Not every chapter is meant to stay.</p>
+
+      <div class="highlight-card">
+        Some endings are protection.
+      </div>
+
+      <p class="quote-text">And every lesson</p>
+      <div class="inline-highlight">is preparing you.</div>
+
+      <section class="footer-card">
+        <div class="footer-header">
+          <span class="keep-badge">Keep</span>
+          <span class="trust-text">trusting the process</span>
+        </div>
+        <div class="sub-card">
+          <span>Grow through what you go through</span>
+          <span class="star-icon">✦</span>
+        </div>
+      </section>
+    </article>
+  </main>
+
+</body>
+</html>

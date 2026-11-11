@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google AI Studio - Antigravity Agent Workspace</title>
+  <style>
+    :root {
+      --bg-dark: #181818;
+      --panel-dark: #242121;
+      --card-bg: #272727;
+      --border-color: #2f2f2f;
+      --accent-blue: #1a73e8;
+      --text-main: #e3e3e3;
+      --text-muted: #9e9e9e;
+      --chip-bg: #2d2d2d;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Top Navigation Header */
+    header.navbar {
+      height: 56px;
+      background-color: var(--panel-dark);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+    }
+
+    .nav-left, .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-temp {
+      background-color: #2f3030;
+      color: #d1d1d1;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn {
+      background: none;
+      border: none;
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .btn-outline {
+      border: 1px solid #4c4c4c;
+    }
+
+    .btn-outline:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-primary {
+      background-color: var(--accent-blue);
+      color: #fff;
+      font-weight: 500;
+    }
+
+    .btn-primary:hover {
+      background-color: #1557b0;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: #4e4e50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    /* Main Container Layout */
+    .main-layout {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Sidebar Navigation */
+    aside.sidebar {
+      width: 240px;
+      background-color: #211e1e;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 16px;
+    }
+
+    .btn-new-app {
+      background-color: #2f2f2f;
+      color: #fff;
+      width: 100%;
+      justify-content: flex-start;
+      padding: 10px 12px;
+    }
+
+    .sidebar-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #666;
+      letter-spacing: 0.5px;
+      padding: 4px 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      background-color: #2d2d2d;
+      color: #fff;
+    }
+
+    .upgrade-card {
+      margin-top: auto;
+      background-color: #292929;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .upgrade-card h4 {
+      font-size: 13px;
+      color: #fff;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .upgrade-card p {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Central Content Area */
+    main.workspace {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-dark);
+      overflow-y: auto;
+    }
+
+    .info-banner {
+      background-color: #272120;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 12px;
+    }
+
+    .prompt-container {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .prompt-box {
+      flex: 1;
+      background-color: var(--panel-dark);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .prompt-input {
+      width: 100%;
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 14px;
+      resize: none;
+    }
+
+    .tools-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .tool-chip {
+      background-color: var(--chip-bg);
+      border: 1px solid #3d3d3d;
+      color: #d1d1d1;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tool-chip.active {
+      background-color: #1e3a5f;
+      border-color: #1a73e8;
+      color: #8ab4f8;
+    }
+
+    /* Right Inspector Sidebar */
+    aside.inspector {
+      width: 320px;
+      background-color: var(--panel-dark);
+      border-left: 1px solid var(--border-color);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid #383838;
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+
+    .model-select {
+      background-color: #1e1e1e;
+      border: 1px solid #383838;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      width: 100%;
+      font-size: 12px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #444445;
+      padding: 4px 0;
+    }
+
+    /* Toggle switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #444;
+      transition: .2s;
+      border-radius: 20px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent-blue);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-left">
+      <span class="brand-title">Google AI Studio</span>
+      <span class="badge-temp">⏱ Temporary chat</span>
+    </div>
+    <div class="nav-right">
+      <button class="btn btn-outline">&lt;/&gt; Get code</button>
+      <button class="btn btn-primary">▶ Run</button>
+      <div class="user-avatar">G</div>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="main-layout">
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <button class="btn btn-new-app">+ New app</button>
+      
+      <div class="sidebar-group">
+        <span class="sidebar-label">BUILD</span>
+        <a href="#" class="nav-item active">⚡ Agents in AI Studio</a>
+        <a href="#" class="nav-item">🎛 Playground</a>
+        <a href="#" class="nav-item">📜 History</a>
+      </div>
+
+      <div class="sidebar-group">
+        <span class="sidebar-label">EXPLORE</span>
+        <a href="#" class="nav-item">📱 My apps</a>
+        <a href="#" class="nav-item">🖼 Gallery</a>
+        <a href="#" class="nav-item">📊 Dashboard</a>
+        <a href="#" class="nav-item">🔧 Tools</a>
+      </div>
+
+      <div class="upgrade-card">
+        <h4>✨ Upgrade to unlock more</h4>
+        <p>Access higher limits, Pro models, code execution and more.</p>
+      </div>
+    </aside>
+
+    <!-- Center Interactive Workspace -->
+    <main class="workspace">
+      <div class="info-banner">
+        <span>Antigravity Agent Preview is available via an API. Link an API key to get URL context started. This agent can execute code, take real actions and use large numbers of tokens.</span>
+        <button class="btn btn-outline" style="color: #8ab4f8; border-color: #1a73e8;">Link an API</button>
+      </div>
+
+      <div class="prompt-container">
+        <div>
+          <h3>Environment Initialized</h3>
+          <p style="font-size: 12px; color: #888; margin-top: 4px;">Each execution spins up an isolated Linux environment where your agent can run code and manage files.</p>
+        </div>
+
+        <div class="prompt-box">
+          <textarea class="prompt-input" placeholder="Start typing a prompt to see what our agents can do..."></textarea>
+          
+          <div class="tools-bar">
+            <div class="tool-chip active">✓ Code execution</div>
+            <div class="tool-chip active">✓ Grounding with Google Search</div>
+            <div class="tool-chip">+ URL context</div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 11px; color: #666;">Press Ctrl + Enter to Run</span>
+          <button class="btn btn-primary">Run</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Configuration Drawer -->
+    <aside class="inspector">
+      <div class="card">
+        <div class="card-title">✦ Antigravity Agent Preview</div>
+        <div class="card-desc">A general-purpose autonomous agent running in a remote Google-hosted Linux environment.</div>
+        
+        <label style="font-size: 10px; color: #888; display: block; margin-bottom: 4px;">Selected model</label>
+        <select class="model-select">
+          <option>Gemini 3.8 Flash</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <div class="card-title">System instructions</div>
+        <div class="card-desc">Optional tone and style instructions for the model</div>
+      </div>
+
+      <div class="setting-row">
+        <span>Filesystem tools</span>
+        <label class="switch">
+          <input type="checkbox" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <span style="color: #bbb;">Set up token cap</span>
+        <a href="#" style="color: #8ab4f8; text-decoration: none; font-size: 12px;">Configure</a>
+      </div>
+    </aside>
+  </div>
+
+</body>
+</html>

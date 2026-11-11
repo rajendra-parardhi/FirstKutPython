@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auth Landing Component</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #1a1521;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 20px;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      max-width: 738px;
+      aspect-ratio: 738 / 414;
+      background-color: #6b4a6a;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Background Areas */
+    .bg-bottom {
+      position: absolute;
+      left: 0;
+      top: 60%;
+      width: 100%;
+      height: 40%;
+      background-color: #c95c62;
+    }
+
+    /* Top Left & Center Artworks */
+    .shape-left {
+      position: absolute;
+      left: 0;
+      top: 4.8%;
+      width: 19.5%;
+      height: 32.3%;
+      background-color: #d5a6c9;
+      border-radius: 0 24px 24px 0;
+    }
+
+    .shape-center {
+      position: absolute;
+      left: 41.3%;
+      top: 15.9%;
+      width: 16.1%;
+      height: 19.1%;
+      background-color: #b781a8;
+      border-radius: 12px;
+    }
+
+    .dot-indigo {
+      position: absolute;
+      left: 29%;
+      top: 9.9%;
+      width: 2.8%;
+      height: 3.6%;
+      background-color: #2d2b4b;
+      border-radius: 4px;
+    }
+
+    .dot-plum {
+      position: absolute;
+      left: 60.4%;
+      top: 9.9%;
+      width: 3.1%;
+      height: 5.5%;
+      background-color: #51335a;
+      border-radius: 50%;
+    }
+
+    /* Right Side Blocks */
+    .block-top {
+      position: absolute;
+      left: 79.6%;
+      top: 30.4%;
+      width: 20.4%;
+      height: 21%;
+      background-color: #7b4568;
+      border-top-left-radius: 16px;
+    }
+
+    .block-mid {
+      position: absolute;
+      left: 79.6%;
+      top: 44.4%;
+      width: 20.4%;
+      height: 21.7%;
+      background-color: #b16a8d;
+    }
+
+    .block-bot {
+      position: absolute;
+      left: 79.6%;
+      top: 54.8%;
+      width: 20.4%;
+      height: 34.8%;
+      background-color: #c66c89;
+      border-bottom-left-radius: 16px;
+    }
+
+    /* Main Cards */
+    .card {
+      position: absolute;
+      top: 7.5%;
+      height: 84%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 12px;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+    }
+
+    .card-login {
+      left: 19.9%;
+      width: 21%;
+      background-color: #423341;
+    }
+
+    .card-signup {
+      left: 58%;
+      width: 21.4%;
+      background-color: #423242;
+    }
+
+    .card-title {
+      color: #ffffff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-align: center;
+      margin-top: 4px;
+      line-height: 1.2;
+    }
+
+    .flex-spacer {
+      flex: 1;
+    }
+
+    .input-line {
+      width: 75%;
+      height: 5px;
+      background-color: #554c5b;
+      border-radius: 3px;
+    }
+
+    .input-box {
+      width: 85%;
+      height: 22px;
+      background-color: #483f4d;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 6px 0;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+      border: none;
+      outline: none;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: #c0648d;
+      border: 1.5px solid #c0648d;
+    }
+
+    .btn-outline:hover {
+      background-color: rgba(192, 100, 141, 0.15);
+    }
+
+    .btn-solid {
+      background-color: #c2658f;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(194, 101, 143, 0.3);
+    }
+
+    .btn-solid:hover {
+      background-color: #d1749e;
+      transform: translateY(-1px);
+    }
+
+    .bottom-accent {
+      width: 23px;
+      height: 18px;
+      background-color: #4b3d3f;
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="canvas-container">
+    <!-- Background regions -->
+    <div class="bg-bottom"></div>
+
+    <!-- Top & center shapes -->
+    <div class="shape-left"></div>
+    <div class="shape-center"></div>
+    <div class="dot-indigo"></div>
+    <div class="dot-plum"></div>
+
+    <!-- Right stacked elements -->
+    <div class="block-top"></div>
+    <div class="block-mid"></div>
+    <div class="block-bot"></div>
+
+    <!-- Left Card: Welcome Back -->
+    <section class="card card-login">
+      <h2 class="card-title">Welcome Back</h2>
+      <div class="flex-spacer"></div>
+      <div class="input-line"></div>
+      <div class="flex-spacer"></div>
+      <button class="btn btn-outline" type="button">Sign In</button>
+    </section>
+
+    <!-- Right Card: Get Started Free -->
+    <section class="card card-signup">
+      <h2 class="card-title">Get Started Free</h2>
+      <div class="flex-spacer"></div>
+      <div class="input-box"></div>
+      <div class="flex-spacer"></div>
+      <button class="btn btn-solid" type="button">Sign Up</button>
+      <div class="bottom-accent"></div>
+    </section>
+  </main>
+
+</body>
+</html>
