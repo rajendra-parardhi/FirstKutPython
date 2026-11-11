@@ -6,13 +6,31 @@ import { FigmaPreview } from "./components/FigmaPreview";
 import { collectPages, createPageLevelJson, generateCodeForPage } from "./utils/figmaToCode";
 
 // API configuration (VITE_API_URL / VITE_API_KEY come from .env at build time)
-import { API, apiHeaders, pollJob } from "./config";
+import { API, apiHeaders, pollJob, saveApiUrl } from "./config";
 
 const EXAMPLE_FILE_KEY = "8VV8hCa7NJjw68b6dykdXN";
 
 function App() {
   // Navigation State
   const [workspace, setWorkspace] = useState("screenshot"); // "screenshot" or "figma"
+
+  // Backend URL override (runtime; health-checked before saving)
+  const [apiEditing, setApiEditing] = useState(false);
+  const [apiDraft, setApiDraft] = useState(API);
+  const [apiError, setApiError] = useState("");
+  const [apiChecking, setApiChecking] = useState(false);
+
+  const handleSaveApiUrl = async () => {
+    setApiChecking(true);
+    setApiError("");
+    const res = await saveApiUrl(apiDraft);
+    setApiChecking(false);
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      setApiError(res.error);
+    }
+  };
 
   // ==========================================
   // WORKSPACE A: SCREENSHOT TO CODE STATES
@@ -592,7 +610,39 @@ function App() {
 
         <div className="connection-status">
           <div className="status-indicator"></div>
-          <span>API: {API}</span>
+          {apiEditing ? (
+            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <input
+                value={apiDraft}
+                onChange={(e) => setApiDraft(e.target.value)}
+                placeholder="https://<pod>-8000.proxy.runpod.net"
+                style={{ width: "260px", padding: "4px 6px", fontSize: "12px" }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveApiUrl(); }}
+              />
+              <button className="toggle-btn" onClick={handleSaveApiUrl} disabled={apiChecking}>
+                {apiChecking ? "..." : "Save"}
+              </button>
+              <button
+                className="toggle-btn"
+                onClick={() => { setApiEditing(false); setApiError(""); }}
+              >
+                Cancel
+              </button>
+              {apiError && (
+                <span style={{ color: "#f87171", fontSize: "12px", maxWidth: "260px" }}>
+                  {apiError}
+                </span>
+              )}
+            </span>
+          ) : (
+            <span
+              title="Click to change the backend URL"
+              onClick={() => { setApiDraft(API); setApiEditing(true); setApiError(""); }}
+              style={{ cursor: "pointer", textDecoration: "underline dotted" }}
+            >
+              API: {API}
+            </span>
+          )}
         </div>
       </header>
 
